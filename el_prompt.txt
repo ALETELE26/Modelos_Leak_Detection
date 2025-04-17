@@ -1,0 +1,129 @@
+#file:modelo_CNN_1vdataset.ipynb  Para mi modelo quiero un enfoque diferente, que tenga en cuenta que posteriormente este modelo sera convertido a codigo C para que la inferencia se produzca en un microcontrolador STM32L432KC. Es por eso que quiero que mi modelo sea una DQNN o sea una Deep Quantized Neural Network y para eso quiero usar QKeras. Si no eres experto en QKeras estudia el tutorial que te adjunto #file:QKerasTutorial.ipynb ,asi como la pagina web que explica el soporte de STM32AI a estas librerias #file:AI_Deep Quantized Neural Network support - stm32mcu.htm ,sobre todo haz mucho caso a las siguientes sugerencias:It is preferable to leave the first layer and the last layer in higher precision: 's8' or 'f32',Usage of the 'BatchNormalization' layer,Placement of the 'MaxPool' layer before the 'BatchNormalization',Due to the way to encode the binary tensors (see “C-layout of the s1 type” section), it is recommended to have the number of channels as a multiple of 32 to optimize the flash memory and RAM sizes, and MAC/Cycle. Ademas quiero un enfoque parecido a la familia de CNN EfficientNetV2 en cuanto a que ellos se dan cuenta que Equally scaling up every stage is sub-optimal,use a non-uniform scaling strategy to gradually add more layers to later stage is better.Tambien ten en cuenta implementar algunos principios que son fundamentales en las CNN modernas como:Residual connections,Batch normalization,DropOut. Por ultimo implementame una NAS (puede ser usando Keras Tuner por ejemplo)que busque optimizar precision del modelo pero al mismo tiempo parameter efficiency teniendo en cuenta que la inferencia de mi modelo va a tener lugar en un micro con 256KB de Flash y 64KB de RAM
+
+
+def validate_stm32_metrics(model):
+    """
+    Función para validar métricas de STM32 después de seleccionar el modelo
+    Requiere STM32Cube.AI CLI instalado
+    """
+    # Guardar modelo para conversión
+    model.save('best_model_for_stm32.h5')
+    
+    print("\nPara validar métricas reales en STM32:")
+    print("1. Usa STM32Cube.AI para convertir el modelo:")
+    print("   stm32ai generate -m best_model_for_stm32.h5 --output stm32_model")
+    print("2. Revisa las métricas detalladas de memoria y rendimiento")
+    
+    # Si tienes STM32Cube.AI CLI instalado, podrías ejecutarlo directamente:
+    try:
+        import subprocess
+        print("\nIntentando generar métricas con STM32Cube.AI...")
+        result = subprocess.run(
+            ["stm32ai", "analyze", "-m", "best_model_for_stm32.h5"], 
+            capture_output=True, text=True
+        )
+        print(result.stdout)
+    except:
+        print("STM32Cube.AI CLI no disponible. Por favor realiza el análisis manualmente.")
+
+
+#file:modelo_CNN_basic_1vdataset.ipynb Ya tengo listo el dataset, ahora en la libreta actual quiero que me generes las celdas necesarias para desarrollar un modelo CNN usando Keras y Tensorflow de tamaño Tiny que me pueda clasificar con precisión los escalogramas de mi dataset, ten en cuenta que despues de que el modelo este entrenado tengo que pasarselo a STM32CubeAI de alguna manera para que me genere el codigo necesario que me permita desplegar la inferencia en mi micro STM32. Ten en cuenta algunos de los enfoques modernos de las CNN y el Deep Learning en general: use a non-uniform scaling strategy to gradually add more layers to later stage is better,Residual connections,Batch normalization,DropOut. Por ultimo, despues de haber desplegado celdas para un modelo basico, implementame una NAS (puede ser usando Keras Tuner por ejemplo)que sea multiobjetivo evaluando al mismo tiempo la precision del modelo, pero igualmente la eficiencia del modelo o sea que sea más pequeño, haciendo un trade-off entre cantidad de parametros y precision en la tarea de clasificacion
+
+
+/**
+  @brief         Floating-point complex magnitude squared with in-place operation.
+  @param[in,out] pSrcDst     points to input/output vector (in-place operation)
+  @param[in]     numSamples  number of complex samples in the vector
+ */
+ARM_DSP_ATTRIBUTE void arm_cmplx_mag_squared_f32_inplace(
+        float32_t * pSrcDst,
+        uint32_t numSamples)
+{
+        uint32_t i;
+        float32_t real, imag;
+        
+        for (i = 0; i < numSamples; i++)
+        {
+            /* Obtener datos complejos */
+            real = pSrcDst[2*i];
+            imag = pSrcDst[2*i+1];
+            
+            /* Calcular magnitud al cuadrado y guardar en posición comprimida */
+            pSrcDst[i] = (real * real) + (imag * imag);
+        }
+}
+
+En el archivo #file:modelo_cnn_ns256.ipynb yo creo un dataset despues de cargar un conjunto de datos de señales de un acelerometro, normalizarlas y hacerles denoising y luego extraer caracteristicas tiempo-frecuencia mediante la transformada wavelet continua. Luego en #file:modelo_CNN_basic_1vdataset.ipynb cargo el dataset creado y lo uso para entrenar modelos de clasificacion de imagenes, sin embargo la precision de los modelos rondo el 30%, lo cual es muy bajo, por lo que queria rehacer una nueva notebook donde se probaran otras diferentes elecciones de numero de muestras y numero de escalas para generar los datasets, coherentes con lo que puede soportar mi microcontrolador, por ejemplo: 64muestras y 100 escalas, 128muestras y 50 escalas, 512muestras y 13 escalas, y 1024muestras y 6 escalas; y que luego entrenase los modelos de #file:modelo_CNN_basic_1vdataset.ipynb con dichos datasets para ver que configuracion es la que genera mayor precision en la clasificacion de imagenes. Otra cosa que quisiera arreglar es que antes de crear los datasets y separar los datos entre datos de prueba y de entrenamiento, antes de eso quisiera normalizar todos los datos para que esten entre cero y uno.
+
+
+#file:gen_dataset_ns512.ipynb Explicame como generar una nueva notebook donde primero se cargue el dataset creado anteriormente accelerometer_cwt_averaged_ns512_processed.h5 desde google drive en un entorno de Google Colab, luego se confeccione un modelo MLP de clasificacion entre las 5 clases posibles del dataset, luego se entrene el modelo usando tecnicas de regularizacion del estado del arte, luego usando Keras Tuner se ejecute un NAS multiobjetivo que me evalue tanto desempeño mediante la precisión como eficiencia mediante el tamaño del modelo, luego se evalue el mejor modelo usando matriz de confusion y otras tecnicas, y por ultimo se prepare el mejor modelo para su posterior despliegue en un microcontrolador mediante STM32CubeAI
+
+
+Utiliza la extension instalada vscode-pdf para poder leer y analizar el siguiente articulo cientifico #file:sensors-24-04009.pdf  . Luego quiero que utilices el enfoque del articulo para crearme un modelo para la deteccion de fugas pero que trabaje sobre el dataset de imagenes de escalogramas ¨accelerometer_cwt_dataset_ns512_processed.h5¨ creado en el archivo: #file:gen_dataset_ns512.ipynb  .El enfoque del articulo empieza utilizando las tecnicas Non-Local Means y Adaptative Histogram Equalization para mejorar la calidad de los escalogramas mejorando el contraste y reduciendo el ruido. A los escalogramas resultantes les llama ELIS: Enhanced Leak-Induced Scalograms. Luego utiliza un Deep Belief Network Model (DBN) para realizar Feature Extraction. La arquitectura DBN es entrenada usando scaled,flattened vectors derived from the ELIS; sin embargo como en mi dataset hay 5 clases este modelo debe estar optimizado para la multilabel classification usando categorical_crossentropy loss function. En la tabla 1 del articulo se muestra la arquitectura del modelo DBN donde se usa regularizacion L2 y dropout despues de cada capa de Batch Normalization. Luego utilizan la tecnica t-Distributed Stochastic Neighbor Embedding para reducir la dimensionalidad de los vectores de caracteristicas. Despues se utiliza como top-level classifier model del DBN un modelo LSSVM : Least Square Support Vector Machine. Por ultimo se utiliza un algoritmo genetico(GA) para realizar hyperparameter tuning en el modelo LSSVM. Quiero que me expliques como hacer una notebook con todo lo que te he descrito anteriormente
+
+
+Necesito que primero analices el documento #file:Peng et al. - 2024 - Leakage Detection in Water Distribution Systems Based on Logarithmic Spectrogram CNN for Continuous.txt  para que conozcas sobre el enfoque que quiero aplicar. Luego quiero que me escribas una nueva Jupyter Notebook estructurada de la siguiente manera:
+1-Importacion de las librerias necesarias y montar Google Drive
+2-Utiliza la celda 17 de mi notebook:#file:gen_dataset_ns512.ipynb para obtener los signal frames y sus etiquetas correspondientes. Con respecto a la original el unico cambio que quiero es que me de la opcion entre generar un dataset de cinco clases(opcion actual de la celda 17) y generar un dataset de 2 clases, fugas o no fugas. En el caso del dataset de dos clases tendrias que hacerlo de manera tal que se cogieran la misma cantidad de signal frames etiquetadas como "No leaks" que originalmente, pero en el caso de la etiqueta "Leaks" tendrias que coger equitativamente signal frames pertenecientes a las etiquetas antiguas: Circumferential Crack,  Gasket Leak, Longitudinal Crack, Orifice Leak; de manera tal que la cantidad de signal frames entre las clases "Leaks" y "No Leaks" este balanceada
+3-Luego necesito una copia fiel de la celda 19 de #file:gen_dataset_ns512.ipynb   que me ejecute la normalizacion y el wavelet denoising de las señales
+4-Luego necesito una celda que me genere, a través de la STFT, los espectrogramas logaritmicos de los cuales se habla en el paper que te adjunte, siguiendo los pasos que alli se establecen. Ten en cuenta que las señales vibroacusticas que estan en mi dataset fueron muestreadas a 25.6kHz mientras que las del paper fueron muestreadas a 8kHz, por lo tanto ajusta en consecuencia parametros como el tamaño de la trama que en el caso del paper ronda entre 20-40ms, o el frame shift que en caso del paper es de 10 ms. Keep the ratio of frame shift to frame length to 1∶2 . Manten el tamaño de la FFT en 512. Utiliza HannWindow como función de ventana.
+5-Una vez que hayas creado los espectrogramas quiero que me prepares los datos para que posteriormente sean entrada de modelos de red convolucional (normalizar los valores, añadirles una dimension de canal(1 correspondiente a escala de grises),mezclar los datos completamente manteniendo la correspondencia entre cada espectrograma y su etiqueta), luego quiero que me salves en mi carpeta de drive los escalogramas procesados en un dataset con sus respectivas etiquetas de manera parecida a como lo hace la funcion save_processed_dataset_to_h5 de la celda 41 de #file:gen_dataset_ns512.ipynb .|
+6-Luego creame el modelo al que el paper le llama Log PS-ResNet18 y entrenalo con los espectrogramas procesados, y luego evalua el rendimiento del modelo
+
+
+Hazme una notebook que este estructurada de la siguiente forma:
+1-Instalacion de dependencias e importacion de librerias:
+Aqui tienes que mezclar las dependencias que se instalan en #file:model_STFT_CNN_vMulticlass.ipynb  con #file:gen_dataset_ns512.ipynb . O sea instala tanto esto:
+# Importación de la clase WaveletDenoising
+!pip install PyWavelets
+import pywt
+from denoising import WaveletDenoising
+Como esto:
+!git clone https://github.com/fastlib/fCWT.git
+!pip install fCWT
+import fCWT
+from fcwt.boilerplate import cwt 
+from tqdm import tqdm  
+!apt-get update
+!apt-get install libfftw3-single3
+import pandas as pd
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy
+from scipy import signal
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers, models
+import seaborn as sns
+import h5py
+from tqdm import tqdm
+import random
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import confusion_matrix, classification_report
+
+2- Cargar y Visualizar Datos:
+Primero montamos google drive y luego ejecutamos la celda 7 de #file:model_STFT_CNN_vMulticlass.ipynb 
+3- Normalización y Denoising con Wavelet
+Lo ejecutamos tal cual la celda 9 de #file:model_STFT_CNN_vMulticlass.ipynb 
+4-Calculamos los escalogramas como en la celda 22 de #file:gen_dataset_ns512.ipynb pero adaptado a que los datasets de señales pueden ser de dos clases (Leaks or No-Leaks) o puede ser de 5 clases.(Tambien añade la funcion plot_cwt_scalograms de ese mismo archivo para que cuando se generen los escalogramas los pueda visualizar)
+5-Ejecutamos la celda 13  que contiene la funcion prepare_data_for_model del archivo #file:model_STFT_CNN_vMulticlass.ipynb pero adaptada para recibir los escalogramas y no los espectrogramas, añadele a esa parte la funcion de mezclar los datos de manera coherente sin que se pierda la relacion entre cada escalograma y su etiqueta.
+6-Construye un modelo analogo al que se hace en la celda build_log_ps_resnet18_with_regularization, entrenalo como se hace en la celda 19 de #file:model_STFT_CNN_vMulticlass.ipynb  donde se utiliza tanto data augmentation(en la celda 17) , y luego evalua el modelo. En las tres fases tanto en la creacion, entrenamiento y evalucion del modelo haz que el codigo sea compatible tanto a trabajar con el dataset de dos clases como el de 5 clases.
+7- Construye un modelo tiny resnet con una filosofia y una manera de entrenar similar a la anterior pero mucho mas pequeño capaz de poder llevarlo despues a un microcontrolador STM32L4 que solo tiene 256KB de Flash
+
+
+
+#file:cwt_CNN_classifier.ipynb  Quiero que me generes una nueva celda con el mismo proposito funcional de la celda 10 donde esta la funcion get_cwt_features pero con un enfoque diferente. Para ello debes estudiar y analizar el paper: #file:Chen et al. - 2023 - Exploiting the Cone of Influence for Improving the Performance of Wavelet Transform-Based Models for_000.txt   . Alli explican a lo que consideran  tres tipos diferentes de escalogramas: los S-Scalograms, los Z-Scalograms y los V-Scalograms. Los que mejores resultados dan y los que quiero que me ayudes a calcular son los V-Scalograms que contienen la informacion del COI Cono de Influencia, que son los que se encuentran menos afectados por los efectos de frontera. Para hacer esto tienes que profundizar en el Appendix A.1.3. Valid Convolution ya que esta es la operacion que genera los V-Scalograms. Tengo que dejarte claro que quiero que los escalogramas se sigan calculando usando la libreria fCWT pero he identificado que lo que hace la libreria es la full-convolution gracias a este parrafo:
+In practice, full convolution is performed very efficiently in the frequency domain by
+multiplying the DFTs of x(n) and h(n). The filtered output is given by the inverse DFT
+of the multiplication. The DFTs are computed by augmenting both sequences with zeros
+to have durations equal to or greater than ˜N for the resulting circular convolution to be
+identical to the desired linear convolution. The DFTs are computed efficiently using fast
+Fourier transform (FFT) algorithms [70].
+
+Ahora para realizar la Valid-Convolution que me permite identificar la COI tendras que implementar la  Valid convolution guiandote por lo que dicen aqui: Valid convolution  can be obtained from same-convolution by
+cropping the first and last M samples and by cropping the first and last 2M samples from
+full-convolution.
+
+Otro detalle tienes que hacer esta nueva celda de manera tal que pueda reemplazarla en la notebook por la celda que me calcula los escalogramas y no tenga que cambiar nada mas de las otras celdas para que se adapten a la nueva.

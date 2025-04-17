@@ -1,0 +1,5404 @@
+An Eﬀicient Forecasting Approach to Reduce Boundary
+Effects in Real-Time Time-Frequency Analysis
+Adrien Meynard, Hau-Tieng Wu
+
+To cite this version:
+Adrien Meynard, Hau-Tieng Wu. An Eﬀicient Forecasting Approach to Reduce Boundary Effects in
+Real-Time Time-Frequency Analysis. IEEE Transactions on Signal Processing, 2021, 69, pp.16531663. �10.1109/TSP.2021.3062181�. �hal-03141062v2�
+
+HAL Id: hal-03141062
+https://hal.science/hal-03141062v2
+Submitted on 22 Feb 2021
+
+HAL is a multi-disciplinary open access
+archive for the deposit and dissemination of scientific research documents, whether they are published or not. The documents may come from
+teaching and research institutions in France or
+abroad, or from public or private research centers.
+
+L’archive ouverte pluridisciplinaire HAL, est
+destinée au dépôt et à la diffusion de documents
+scientifiques de niveau recherche, publiés ou non,
+émanant des établissements d’enseignement et de
+recherche français ou étrangers, des laboratoires
+publics ou privés.
+
+1
+
+An Efficient Forecasting Approach
+to Reduce Boundary Effects in Real-Time
+Time-Frequency Analysis
+Adrien Meynard, Hau-Tieng Wu
+
+Abstract—Time-frequency (TF) representations of time
+series are intrinsically subject to the boundary effects. As
+a result, the structures of signals that are highlighted by the
+representations are garbled when approaching the boundaries of the TF domain. In this paper, for the purpose of realtime TF information acquisition of nonstationary oscillatory
+time series, we propose a numerically efficient approach
+for the reduction of such boundary effects. The solution
+relies on an extension of the analyzed signal obtained by
+a forecasting technique. In the case of the study of a class of
+locally oscillating signals, we provide a theoretical guarantee
+of the performance of our approach. Following a numerical
+verification of the algorithmic performance of our approach,
+we validate it by implementing it on biomedical signals.
+Index Terms—Boundary effects, time-frequency, forecasting, nonstationarity
+
+I
+
+I. I NTRODUCTION
+
+N any digital acquisition system, the study and the
+interpretation of the measured signals generally require an analysis tool, which enables researchers to point
+out the useful characteristics of the signal. The need for
+signal analysis arises from various signals, ranging from
+audio [1], [2], mechanical [3], or biomedical signals [4].
+For instance, biomedical signals, such as photoplethysmogram (PPG), contain several characteristics, including
+respiratory rate or blood pressure, that cannot be interpreted from its run-sequence plot in the time domain.
+An analysis tool would make possible the extraction of
+these useful characteristics.
+Usually, the measured signals exhibit nonstationary
+behavior, and the observed quantities might be interfered with by transient phenomena that can vary rapidly
+and irregularly. In this paper, we focus on oscillatory
+time series. These signals might, for example, oscillate
+fast with large amplitudes at one moment, and then
+oscillate slowly with small amplitudes at the next moment. In order to adapt the analysis to nonstationarities,
+local spectral analysis is generally performed [5], [6]. The
+A. Meynard is with the Department of Mathematics, Duke University, Durham, NC, 27708 USA.
+H.-T. Wu is with the Department of Mathematics and Department
+of Statistical Science, Duke University, Durham, NC, 27708 USA;
+Mathematics Division, National Center for Theoretical Sciences, Taipei,
+Taiwan.
+A.
+Meynard
+is
+the
+corresponding
+author
+(e-mail:
+adrien.meynard@duke.edu).
+
+short-time Fourier transform [7] (STFT), a typical tool
+built for this purpose, enables the determination of the
+local frequency content of a nonstationary signal.
+Windowing is a common method for performing local
+analysis. Among many others, STFT [8], continuous
+wavelet transform (CWT) [9], synchrosqueezing transform (SST) [10], and reassignment [11] (RS) are representations that fall back on the use of an analysis window.
+Let x : I → R denote the observed signal, where I
+denotes the finite interval where the signal is measured.
+Let gs : R → R denote the analysis window, where s is a
+shape parameter. The support of gs is localized around
+the origin and is small with respect to | I |. The translation
+operator is Tτ defined as:
+Tτ f = f (t − τ ) ,
+
+∀ f :R→R.
+
+Then, the local analysis of x around the instant τ ∈ I
+relies on the evaluation of the following inner product:
+Vx (s, τ ) = h x, Tτ gs i I .
+
+(1)
+
+A major shortcoming of this technique occurs when
+analyzing the signal x near the boundaries of the interval
+I. Clearly, at these points, half of the information is missing. Consequently, the results of the inner product (1) are
+distorted. This phenomenon is usually understood as the
+boundary effect. The result of the SST of a PPG is shown
+in the lower-left corner of Fig. 1 (see Section IV-D3 for
+a comprehensive description). The distortion resulting
+from boundary effects is clearly visible on the right side
+of this representation—this area is highlighted by the
+red dashed rectangle. Indeed, while in the major left
+part of the image, clear lines stand out, they become
+blurred as they approach the right boundary of the image. Therefore, estimations of signal characteristics, like
+instantaneous frequencies [12] or amplitudes, from this
+TF representation appear to be imprecisely determinable
+(or even likely to fail) in the vicinity of the boundaries.
+Moreover, this boundary effect would unavoidably limit
+applying these window-based TF analysis tools for realtime analysis purposes. It is thus desirable to have a
+solution to eliminating the boundary effects.
+Attempts to minimize the boundary effects generally
+consists in softening the discontinuity on signal edges.
+Usually, the approaches can be classified into two main
+
+2
+
+2
+
+Signal
+
+1
+0
+-1
+18
+
+20
+
+22
+
+24
+
+26
+
+28
+
+30
+
+5
+
+5
+
+4
+
+4
+
+Frequency (Hz)
+
+Frequency (Hz)
+
+Time (s)
+
+3
+2
+1
+0
+
+3
+2
+1
+
+20
+
+25
+
+Time (s)
+
+30
+
+0
+
+20
+
+25
+
+30
+
+Time (s)
+
+Fig. 1. A segment of PPG signal (top) and the right boundary of
+a TF representation determined by the SST without extension (bottom left), and the right boundary of a TF representation determined
+by the SST with the proposed boundary effect reduction algorithm
+by forecasting (bottom right). The window length for the SST is
+12 seconds. Videos of these real-time SSTs are available online at
+https://github.com/AdMeynard/BoundaryEffectsReduction.
+
+classes, choosing a proper analysis window and extending/forecasting the signal. In the first class, judicious
+choice of analysis window whose support does not
+interfere with the boundary points can minimize the
+occurrence of aberrant patterns near the boundaries of
+the TF plane, for instance, [13], [14]. Due to the specific
+relationship between the chosen analysis windows and
+the TF analysis tool, these techniques do not make
+it possible to reduce the boundary effects of all TF
+representations. Another natural idea, the second class,
+consists of carrying out a preliminary step of extending,
+or forecasting, the signal beyond its boundaries. Due
+to its flexibility, various forecasting schemes have been
+proposed. For example, there exist simple extension
+schemes that do not take into account the dynamical
+behavior of the signal, such as zero-padding, periodic
+extension, symmetric extension [15], [16], or polynomial
+extrapolation [17]. There exist extension schemes based
+on physically relevant dynamical models, such as the
+Extended Dynamic Mode Decomposition [18] (EDMD)
+and the Gaussian process regression [19], [20] (GPR). In
+speech processing, dynamic mode predictors have also
+been proposed [21] to forecast signals falling into the socalled source–filter model. This gradient-based technique
+relies on the shadowing approach proposed in [22].
+There also exist extension schemes based on stochastic
+models, such as the Trigonometric, Box-Cox transformation, ARMA errors, Trend and Seasonal components
+(TBATS) algorithm [23], the dynamic linear models [24].
+In the physically relevant dynamical models, the oscillation or trend, are usually modeled as the mean of a
+stochastic process, while in the stochastic models, the oscillation or trend are modeled by the covariance structure
+of the stochastic process. It is also possible to consider
+polynomial regression [25] or modeling the mean by
+splines [26], kernel functions [27], and wavelets [28],
+
+or nonparametric regression [25], to estimate the mean
+function before forecasting the signal. Neural network
+models, such as the long short-term memory model [29],
+is another approach. The above list is far from exhaustive, and we refer readers with interest to [30] for a
+friendly monograph on the general forecasting topic.
+While the model-based extension scheme gives betterextended signals than those simple extension without
+dynamical models, they generally have a great computational cost.
+In this paper, we propose a fast extension algorithm
+based on a simple dynamical model that optimizes the
+trade-off between the extension quality and the computational cost, so that the real-time analysis can be
+achieved. The algorithm is composed of two steps.
+1) Extend the signal by forecasting it. The aim is to use a
+simple dynamic model to predict the values taken
+by the measured signal outside the measurement
+interval. Then, once this operation is done, we have
+access to an extended signal defined on a larger
+interval I∆ , where ∆ denotes the size of the extension
+on both boundaries of I.
+2) Run the local analysis tool on the extended signal.
+Assuming that the support of the analysis window
+is smaller than 2∆, the local analysis near the boundary of I is now possible without lack of information
+thanks to knowledge brought by the extension.
+Thus, assuming that the quality of the extension step
+is sufficient, the analysis results obtained that way will
+be less sensitive to the boundary effects than the result
+of the analysis tool applied directly to the nonextended
+signal. We claim and prove that forecasting oscillatory
+signals based on the simple dynamical model combined
+with the simple least square approach is sufficient for
+reducing the boundary effects for the TF analysis, or
+other kernel-based analysis. To our knowledge, such
+theoretical analysis does not exist in the literature. See
+the bottom of Fig. 1—in particular, the regions indicated
+by the dashed boxes—for a snapshot of the result. The
+main benefit of this simple approach is a numerically
+efficient solution with a theoretical guarantee for realtime analysis purposes.
+The paper is organized in the following way. In section II, we provide an extension method based on a
+linear dynamic model. We derive the corresponding algorithm for boundary effects reduction. In Section III, we
+show that the dynamic model we consider is sufficient
+to extend signals taking the form of sums of sine waves.
+An evaluation of the theoretical performance of our
+algorithm on this class of signals is given in Section III. In
+Section IV, we compare our extension method with more
+sophisticated methods such as EDMD, GPR, or TBATS.
+We show that our algorithm gives fast results of reasonable quality. Finally, we evaluate the performance of
+our boundary effects reduction algorithm on biomedical
+signals, such as respiratory signals, and compare it to
+the theoretical results.
+
+3
+
+II. A LGORITHM
+
+A. Step 1: Extension by Forecasting
+
+As explained above, the algorithm for the reduction
+of boundary effects on TF representations relies on extending the signal by forecasting it before applying the
+TF analysis.
+We start with the notation. Let x : R → R denote
+a continuous-time signal. In this work, we consider a
+finite-length discretization of that one. Thus, the sampled
+signal x, whose length is denoted by N, is such that
+ 
+n
+x[n] = x
+, ∀n ∈ {0, . . . , N − 1} ,
+fs
+where f s denotes the sampling frequency. Let M and
+K be two positive integers such that M < K and K +
+M ≤ N. Then, for all k ∈ {0, . . . , K − 1}, we extract from
+x ∈ R N the subsignal xk ∈ R M given by:
+
+
+
+x[ N − K − M + k]
+
+
+..
+xk = 
+ .
+.
+
+(2)
+
+These subsignals are gathered into the matrix X ∈ R M×K
+such that:
+
+X = x 0 · · · x K −1 .
+
+Notice that these subsignals are overlapping each other.
+Indeed, xk+1 is a shifting of xk from one sample. We also
+consider the matrix Y ∈ R M×K given by:
+
+· · · xK
+
+
+
+Y = f (X) .
+
+.
+
+(3)
+
+In a general framework, forecasting means estimating
+the function f from the observed values taken by the
+signal, in order to predict its future values. For instance,
+the dynamic mode decomposition [31], [18] or other
+more complicated models [20], [23], [24], [29], allow this
+by setting additional constraints on the behavior of f . We
+will see, in Section III, that considering such a complex
+dynamic model is not necessary for the study of the
+oscillatory signals of interest to us. That is why we
+consider here a naive dynamical model, assuming that
+we have the following relation:
+Y = AX ,
+
+x [ N − K + k − 1]
+
+Y = x1
+
+a) Dynamical Model: Establishing a dynamical
+model means determining the relation linking Y to X;
+that is, finding a function f so that
+
+(4)
+
+where A ∈ R M× M . In other words, we adopt a classical
+strategy in the study of dynamical systems, the linearization of a nonlinear system, when the system is sufficiently
+regular. Notice that this linearized dynamical model can
+be written equivalently according to the subsignals xk ,
+as:
+xk+1 = Axk , , ∀k ∈ {0, . . . , K − 1} .
+(5)
+b) Forecasting: Determining the forecasting amounts
+to estimating the unknown matrix A. Indeed, let Ã
+denotes the estimate of A. We then obtain the forecasting
+of xk+` by recursively applying the linear relation (4):
+x̃K +` = Ã
+· · · Ã} xK = Ã` xK .
+| Ã{z
+
+The boundary effect reduction algorithm is based on
+manipulating X and Y.
+The pseudo-code of the proposed real-time algorithm
+to reduce boundary effects on windowing-based TF
+representations is shown in Algorithm 1. We coined the
+algorithm BoundEffRed. Below, we detail the algorithm,
+particularly the signal extension SigExt in Algorithm 2.
+
+Let e M denote the unit vector of length M given by e M =
+T
+0 · · · 0 1 . Consequently, given definition (2), the
+forecasting of the signal at time N −f1s +` is provided by
+
+Algorithm 1 Tackling boundary effects of a TF representation in real-time. Fx = BoundEffRed(x, M, K, L, F )
+Inputs: x N , M, K, N0 , L, F
+
+where α(`) denotes the last row of Ã` , i.e., α(`) = e TM Ã` .
+c) Model Estimation: To estimate the matrix A, we
+consider the simple but numerically efficient least square
+estimator. That is, we solve the following problem:
+
+while N increases do
+Real-time input: x N
+
+` times
+
+x̃[ N − 1 + `] = e TM x̃K +` = α(`) xK ,
+
+Ã = arg min L(A) ,
+α
+
+Forecasting step.
+• Signal extension: x̃ N + L = SigExt(x N ).
+Representation estimation step.
+• Extended representation evaluation: F (x̃ N + L ).
+• Restriction of F (x̃ N + L ) to the current time
+(N)
+interval (see (9)) to obtain Fx = F ext (x N ).
+(N)
+
+Real-time output: Signal representation Fx
+end while
+
+(6)
+
+(7)
+
+where the loss function L is given by:
+K −1
+
+L(A) = kY − AXk2 = ∑ kxk+1 − Axk k2 .
+k =0
+
+Therefore, solving the problem (7), i.e., ∇L(Ã) = 0, gives
+the following estimate Ã of the dynamical model matrix
+A:
+Ã = YX T (XX T )−1 .
+
+(8)
+
+4
+
+Remark 1. This expression clearly shows that the matrix Ã
+takes the following form:
+
+
+0
+1
+0 ··· 0
+ ..
+.. 
+..
+..
+..
+.
+.
+.
+.
+. 
+
+
+.
+
+.
+..
+..
+Ã =  .
+
+.
+.
+.
+0
+
+
+ 0 ··· ··· 0
+1 
+α1 · · · · · · · · · α M
+
+Then, except for the row vector α = (α1 · · · α M ), the matrix
+A is fully determined by the dynamical model.
+
+d) Signal Extension: Since we are building a realtime algorithm, we consider that only the right “side”
+of the signal has to be extended, the left “side” being
+fixed since it only concerns the past values of the signal.
+We therefore construct the extended signal x̃ ∈ R N + L
+concatenating the observed signal x, and the forward
+forecasting x̃fw ∈ R L . We summarize the extension step
+in Algorithm 2.
+Algorithm 2 Signal extension. x̃ = SigExt(x, M, K, L)
+Inputs: x N , M, K, L
+Forward forecasting.
+• Estimation of the matrix Ã via equation (8).
+• Forecasting x̃fw ∈ R L obtained applying equation (6) with ` ∈ {1, . . . , L}.
+T
+Output: Extended signal x̃ N + L = x N x̃fw .
+B. Step 2: Extended Time-Frequency Representation
+Let F : R N → CF× N generically denotes the TF
+representation of interest to us, which could be, for instance, STFT, CWT, SST, or RS. Here, F typically denotes
+the size of the discretization along the frequency axis.
+Due to the boundary effects, the representation F (x N )
+shows undesired patterns near its edges. To alleviate
+the boundary effects, we apply the representation to the
+estimated extended signal x̃. This strategy moves the
+boundary effects out of the time interval I = [0, Nf−s 1 ].
+Finally, the boundary-effects insensitive representation
+F ext : R N → CF× N of x N is given for all ν ∈ {0, · · · , F −
+1}, n ∈ {0, · · · , N − 1} by:
+F ext (x N )[ν, n] = F (x̃ N + L )[ν, n] .
+
+(9)
+
+This amounts to restricting the representation F (x̃ N + L )
+to the current measurement interval of x N . For the sake
+of simplicity, we denote the restriction operator by R,
+where R : CF×( N + L) → CF× N . Consequently, we have:
+F ext (x N ) = R (F (x̃ N + L )) .
+
+(10)
+
+We call F ext the boundary-free TF representation.
+(N)
+Fx ∈ CF× N is the estimation of the boundary-free TF
+representation at iteration N in Algorithm 1. For numerical purposes, and to make the real-time implementation
+achievable, we do not perform a full re-estimation of
+
+F ext at iteration N + 1. Instead, the additional knowledge provided by x[ N + 1] only influences the values of
+the last Lwin columns of F ext (x N +1 ), where Lwin denotes
+the window half-length used by the TF representation.
+( N +1)
+Thus, Fx
+is obtained by the concatenation of the first
+(N)
+N − Lwin + 1 columns of Fx with the last Lwin columns
+of F ext (x N +1 ).
+III. T HEORETICAL P ERFORMANCE
+A. Signal Model
+We model the meaningful part of the observed signal
+as a deterministic multicomponent harmonic signal; that
+is, a sum of sine waves:
+
+
+J
+n
+z[n] = ∑ Ω j cos 2π f j + ϕ j ,
+(11)
+fs
+j =1
+where J denotes the number of components, Ω j > 0 the
+amplitude of the jth component, f j its frequency, and
+ϕ j ∈ [0, 2π ) its initial phase. For the sake of simplicity,
+we make an additional assumption on the frequencies of
+each component. We assume that for all j ∈ {1, . . . , J }:
+p0j
+pj
+fs =
+fs .
+(12)
+M
+K
+In addition, the observed signal is assumed to be corrupted by an additive Gaussian white noise. Therefore,
+the measured discrete signal x is written as:
+
+∃ p j , p0j ∈ N∗ :
+
+fj =
+
+x = z + σw ,
+
+(13)
+
+where z follows model (11), w is a Gaussian white noise,
+whose variance is normalized to one, and σ > 0. Clearly,
+σ2 denotes the variance of the additive noise σw.
+B. Forecasting Error
+On the forecasting interval, we decompose the estimated signal x̃ as follows:
+x̃[n] = z[n] + e[n] ,
+
+(14)
+
+where e is the forecasting error. When n ∈ I =
+{0, . . . , N − 1}, this error contains only the measurement
+noise, that is e[n] = σw[n]. Outside the interval I, the
+importance of the forecasting error e is also affected by
+the loss of information resulting from the linearization
+of the dynamical model we consider in (4). To evaluate
+the actual behavior of the forward forecasting error e[n]
+when n ≥ N, we determine its first two moments.
+1) The mean, or estimation bias, is such that:
+∆
+
+µ[n] = E{e[n]} = E{x̃[n]} − z[n] .
+
+(15)
+
+Given the forecasting strategy, we have µ[n] = 0
+when n ∈ I and
+µ[n] = E{α(n− N +1) }zK + σE{α(n− N +1) wK } − z[n]
+(16)
+when n ≥ N.
+
+5
+
+2) The covariance is given by:
+
+∆
+γ[n, n0 ] = E{(e[n] − µ[n]) e[n0 ] − µ[n0 ] }
+
+= E{x̃[n]x̃[n0 ]} − z[n]z[n0 ] − µ[n]z[n0 ]
+− µ[n0 ]z[n] − µ[n]µ[n0 ] .
+
+Thus by definition of the noise, we have γ[n, n0 ] =
+σ2 δn,n0 when (n, n0 ) ∈ I 2 . When n ≥ N, let us denote
+` = n − N + 1. Then, we have two cases.
+(i) If n0 ∈ I:
+
+γ[n, n0 ] = σE{w[n0 ]α(`) }zK + σ2 E{w[n0 ]α(`) wK } .
+(17)
+(ii) If n0 = N − 1 + λ ≥ N:
+n
+o
+T
+γ[n, n0 ] = zKT E α(`) α(λ) zK + σE{α(`) wK α(λ) }zK
+
++ σE{α(λ) wK α(`) }zK + σ2 E{α(`) wK α(λ) wK }
+− z[n]z[n0 ] − z[n]µ[n0 ] − z[n]µ[n0 ] − µ[n]µ[n0 ] .
+(18)
+
+Besides, we recall that γ[n, n0 ] = γ[n0 , n].
+In Theorem 1, we specify the asymptotic behavior of
+the forecasting bias and covariance when the dataset size
+K is great.
+Theorem 1. Let x ∈ R N be a discrete-time random signal
+following model (13). Let x̃ denotes its forecasting, obtained
+using the extension Algorithm 2. Let n ≥ N be a sample
+index. Then, the first-order moment of the forecasting error
+e[n] in (14) defined in (15) satisfies
+!
+ 
+(n)
+1
+1 a1
+(n)
+(n) 2
++
+o
+(19)
++
+a
+|µ[n]| ≤ a0 σ +
+2
+2
+K
+K
+σ
+(n)
+
+(n)
+
+(n)
+
+as K → ∞, where a0 , a1 , and a2 are positive quantities,
+independent of K and σ. Its second-order moment γ[n, n0 ]
+satisfies the following approximation equations:
+(i) if n0 ∈ I = {0, . . . , N − 1}:
+ 
+
+1
+1  (n,n0 )
+(n,n0 ) 2
+(n,n0 ) 2
+0
+σ +o
+γ[n, n ] ≤ b0
+σ +
+b
++ b2
+K 1
+K
+(20)
+(n,n0 ) (n,n0 )
+(n,n0 )
+as K → ∞, where b0
+, b1
+, and b2
+are positive
+quantities, independent of K and σ;
+(ii) if n0 ≥ N:
+(n,n0 ) 2
+
+γ[n, n0 ] ≤ c0
+
+σ
+
+(n,n0 )
+
+1 c1
++
+K
+σ2
+
+(n,n0 )
+(n,n0 ) 2
++ c2
++ c3
+σ
+
+(n,n0 )
+
+(n,n0 )
+
+(n,n0 )
+
+!
+
+ 
+1
++o
+K
+(21)
+(n,n0 )
+
+as K → ∞, where c0
+, c1
+, c2
+and c3
+positive quantities, independent of K and σ.
+
+are
+
+Proof. See the Supplementary Materials. The proof is
+mainly based on Taylor expansions of the forecasting
+(n) (n)
+(n,n0 )
+(n,n0 )
+error. Nonoptimal values of a0 , a1 ,. . . , b0
+,. . . , c3
+are also provided in the proof.
+
+The forecasting bias and covariance asymptotically
+depend linearly on the ratio K1 . This shows the need
+to use a sufficiently large dataset to obtain an accurate
+forecast. Ideally when K → ∞, the forecasting error
+would behave like the measurement noise σw, i.e., a
+zero-mean white noise whose variance is of the order of
+σ2 . However, Theorem 1 shows that the estimator may
+remain asymptotically biased (the first term in the bound
+of equation (19) being independent of K). Concerning the
+covariance of the forecasting error, the expected asymptotic behavior is verified. Indeed, when K → ∞, the
+variance of the forecasting estimator increases at most
+linearly with the noise variance σ2 , since is bounded by
+(n,n0 ) 2
+b0
+σ .
+Assume now that K is sufficiently great and fixed. The
+noise influences the quality of the forecasting estimator
+in two ways. On the one hand, when the noise variance
+σ2 is great, the bias and the variance of the estimator
+potentially increase linearly with σ2 . This reflects the
+classical behavior of an estimator of a signal degraded
+by additive noise. On the other hand, due to terms in
+1/σ2 , when the noise variance σ2 is small, the bias and
+the variance of the forecasting estimator are no longer
+controlled via equations (19) and (21). This illustrates
+the necessary presence of noise to obtain an accurate
+prediction. Indeed, if σ is too small, the matrix XX T is
+ill-conditioned and its inversion in (8) is sensitive. The
+forecasting is then of poor quality. Noise therefore appears as a regularization term to ensure the invertibility
+of XX T . This seemingly counterintuitive fact indicates
+the challenge we encounter to do forecasting with the
+dynamic model (3), the degeneracy. Note that from the
+lag map perspective, X and Y consist of points located on
+a low dimensional manifold. Thus, locally the ranks of X
+and Y are low, which leads to the degeneracy. However,
+when noise exists, it naturally fills in deficient ranks, and
+stabilizes the algorithm.
+The dependencies of the forecasting quality on the
+subsignals lengths M and the forecasting index ` =
+n − N + 1 are hidden in the expression of the parameters
+(n)
+(n)
+(n,n0 )
+(n,n0 )
+a0 , a1 ,. . . , b0
+,. . . , c3
+. The numerical results,
+discussed in Section IV-C1, allow us to better evaluate
+these dependencies.
+C. Adaptive Harmonic Model
+One can extend the previous result to the case where
+the instantaneous frequencies and amplitudes of the
+components of the deterministic part of the observed
+signal are slowly varying. It is an AM-FM model that, in
+its is continuous-time version, takes the following form
+J
+
+z(t) = ∑ a j (t) cos(2πφj (t)) ,
+
+(22)
+
+j =1
+
+where a j (t) and φ0j (t) describe how large and fast the
+signal oscillates at time t. Clearly, (11) is a special case
+satisfying the AM-FM model when the a j and φ0j are
+
+6
+
+both constants. In many practical signals, the amplitude
+and frequency do not change fast. It is thus reasonable
+to further restrict the regularity and variations of the
+instantaneous amplitudes and frequencies of these AMFM functions. When the speeds of variation of the instantaneous amplitudes a j and frequencies φ0j are small, the
+signal can be “locally” well approximated by a harmonic
+function in (11); that is, locally at time t0 , z(t) can be well
+J
+approximated by z0 (t) := ∑ j=1 a j (t0 ) cos(2π (φj (t0 ) −
+0
+0
+t0 φj (t0 ) + φj (t0 )t)) by the Taylor expansion. An AM-FM
+function satisfying the slow variation of the instantaneous amplitudes a j and frequencies φ0j is referred to the
+adaptive harmonic model (AHM) (see [32], [33] for mathematical details). It is thus clear that the forecasting error
+caused by the SigExt algorithm additionally depends on
+the speed of variation of the instantaneous amplitudes
+a j and frequencies φ0j . For the forecasting purpose, it is
+thus clear that when the speed of variation of a j and φ0j
+are slow K can be chosen large while the signal can be
+well approximated by (11). Hence, Theorem 1 can still
+be applied to approximate the error. However, how to
+determine the optimal K based on the signal depends
+on the application and is out of the scope of this paper.
+It will be explored in future work for specific application
+problems.
+The models described in Sections III-A and III-C consider the meaningful part of the signal to be a deterministic component. These models are purposely adapted to
+signals showing local line spectra. The physiological signals we are interested in, such as respiratory or cardiac
+signals, have this characteristic (see Section IV-D). Signals with wider local spectra, such as electroencephalography signals, do not fall into this category, and are
+more faithfully modeled as random signals. Thus, the
+theoretical justifications proposed above are no longer
+applicable to guarantee the forecasting quality of SigExt.
+D. Performance of the Boundary Effects Reduction
+While we do not provide a generic proof of the
+boundary effect reduction on any TF analysis tools, we
+discuss a particular case of SST. Since SST is designed
+to analyze signals satisfying the AHM, as is discussed
+in Section III-C, Theorem 1 ensures that the forecasting
+error e defined in (14) is controlled and bounded in
+terms of mean and covariance. Recall Theorem 3 in [32],
+which states that when the additive noise is stationary
+and may be modulated by a smooth function with a
+small fluctuation, the SST of the observed signal remains
+close to the SST of the clean signal, throughout the
+TF plane. We refer the reader to [32] for a precise
+quantification of the error made in the TF plane, which
+depends notably on the covariance of the additive noise
+and on the speed of variation of the amplitudes and
+instantaneous frequencies composing the signal. In our
+case, while the noise of the historical data is stationary,
+the forecasting error depends on the historical noise, and
+hence the overall “noise” is nonstationary. However, the
+
+dependence only appears in the extended part of the
+signal. We claim that the proof of Theorem 3 in [32]
+can be generalized to explain the robustness of SST to
+the noise, and a systematic proof will be reported in
+our future theoretical work. We verify experimentally
+that Algorithm 1 is efficient for a large number of
+representations in the following Section IV. Therefore, in
+our case, this means that the boundary effect is strongly
+reduced since the impact of the forecasting error does
+SST is limited. An immediate application is that the
+instantaneous frequencies can now be well estimated
+continuously up to the edges of the TF plane, and
+real-time acquisition of the instantaneous frequency and
+amplitude information is possible.
+IV. N UMERICAL R ESULTS
+For the reproducibility purpose, the MATLAB code
+and datasets used to produce the numerical results in
+this section are available online at https://github.com/
+AdMeynard/BoundaryEffectsReduction.
+A. Extension Methods for Comparison
+To highlight the fact that the linear dynamical model is
+sufficient to catch most of the dynamical behavior of signals following the AHM, we compare the performance
+of Algorithm 1 with a simple extension obtained by
+pointwise symmetrization [15]. We also evaluate the performance of reference forecasting algorithms that could
+be used for extending such signals. These methods are:
+• The EDMD has been developed by Williams et
+al. [18]. The proposed algorithm is a way to obtain an approximation of the so-called Koopman
+operator of the observed system, which theoretically
+allows catching dynamic of nonlinear systems [34].
+• The GPR [19] is a method relying on a probabilistic
+dynamical model. That one is based on the Gaussian
+process structure, and therefore offers more flexibility in the type of dynamic that could be modeled
+than the linear model (4).
+• The TBATS method [23] is based on a classical
+decomposition of times series into a trend, seasonal
+and ARMA components, with a specific dynamic
+for the seasonal component. This model demands
+the estimation of numerous parameters and, by
+implication, may require a long computation time.
+B. Evaluation Metrics
+The first evaluation metric is quantifying the forecasting quality (i.e. not depending on `) in the time
+domain. We evaluate the Experimental Mean Square
+Error MSExp (x̃) of the forward forecast extended signals,
+namely,
+1
+kx̃ − xext k2
+(23)
+L
+L
+1
+= ∑ µxp [ N − 1 +`]2 + γxp [ N − 1 +`, N − 1 +`].
+L `=1
+
+MSExp (x̃) =
+
+7
+
+where xext is the ground-truth extended
+signal; that is,
+
+xext := x[− L] · · · x[ N − 1 + L] . Then, as long as the
+bias µ[ N − 1 + `] and the variance γ[ N − 1 + `, N − 1 + `]
+of the forecasting estimator remain small for all `, the
+MSE takes small values either.
+The second evaluation metric is evaluating the quality
+of the boundary effect reduction directly on the TF representation. We compare the obtained TF representation
+opt
+to the optimal TF representation F N (x), defined as
+the restriction of the representation of the ground-truth
+extended signal xext ; that is, we have
+
+F opt (x N ) = R F (xext ) ,
+(24)
+
+where R is defined in (10). To compare different techniques, we use a criterion proposed in [33] that quantifies the optimal transport (OT) distance between a
+given TF representation and the optimal one. In general, the OT distance is a quantity that measures how
+different two probability density functions are. Denote
+a TF representation as Q. For t fixed, we consider
+t (ξ ) =
+the probability
+density function defined by pQ
+R
+2
+2
+|Q (ξ, t)| R |Q (ν, t)| dν ; that is, normalizing the spectral information at time t. At each time t, the OT distance
+dt between two TF representations Q and F opt at time
+t is defined by
+dt (Q, F
+
+opt
+
+)=
+
+Z
+
+R
+
+t
+t
+P̃Q
+(ξ ) − PF
+opt ( ξ ) dξ ,
+
+Rξ t
+t (ξ )
+t
+=
+where PQ
+=
+−∞ pQ ( ν )dν and P̃F opt ( ξ )
+Rξ t
+−∞ p̃F opt ( ν )dν. In other words, the OT distance between Q and F opt at time t is given by the L1 norm
+of the associated cumulative density function. Note that
+dt (Q, F opt ) quantifies the proximity between the estimated and actual TF representations at time t. With the
+OT distance, we define the performance index D (Q, F )
+for the reduction of boundary effects of a given TF
+representation Q over another TF representation F by
+Z
+
+dt Q, F opt dt
+.
+(25)
+D (Q, F ) = Z I
+
+dt F , F opt dt
+I
+
+In other words, D (Q, F ) is the ratio between its averaged OTD to the optimal TF representation F opt
+(see (24)) and the averaged OTD of the original TF
+representation F to F opt . Thus, D (Q ) < 1 means a
+reduction of the boundary effects. Let us evaluate the
+quality of the boundary effects reduction on biomedical
+signals.
+C. Simulated Signals
+We first evaluate the quality of the forecasting step
+and compare it to the theoretical results provided by
+Theorem 1. The level of the forecasting error depends
+on at least two parameters:
+• The noise variance σ2 .
+• The size of the training dataset K.
+
+10 0
+
+10 -5
+
+10 -10
+
+10 -15
+10 -14
+
+10 -12
+
+10 -10
+
+10 -8
+
+10 -6
+
+10 -4
+
+10 -2
+
+Fig. 2. Evolution of the experimental forecasting variance as a function
+of the noise variance for three different values the forecasting sample
+index `.
+
+In Sections IV-C1 and IV-C2, we study the influence
+of these parameters. A comparison with the theoretical
+results of Section III is also available.
+1) Sum of sine waves: We proved that the linear dynamic model is sufficient to catch the dynamical behavior of signals taking the form (11). In order to validate
+this theoretical result, we apply the forecasting Algorithm 2 to a large number of realizations of the random
+vector x of size N = 104 , following model (13), and such
+that the deterministic component z takes the form:
+
+
+n
+n
++ A cos 2π p2
+, ∀n ∈ {1, . . . , N },
+z[n] = cos 2π p1
+M
+M
+with M = 150, p1 = 10, p2 = 33 and A = 1.4. Besides,
+the additive noise is chosen to be Gaussian: w ∼ N (0, I).
+a) Influence of the Noise Variance σ2 : Here, the size
+of the training dataset is set to K = 450. Then, the
+forecasting algorithm is run on 500 realizations on the
+discrete signal x for 200 different values of σ, logarithmically equispaced from 10−7 to 10−1 . For each of these
+values, we determine the experimental bias, denoted as
+µxp [ N − 1 + `], and experimental variance, denoted as
+γxp [ N − 1 + `, N − 1 + `]. Fig. 2 shows the experimental
+forecasting variance as a function of the noise variance
+for three different values the forecasting sample index:
+` = 1, ` = 10, and ` = 100.
+First, when the noise is weak, the variance of the
+forecasting estimator is dramatically high. For instance,
+in this specific example, the estimator x̃[ N − 1 + `] for
+` = 10 is inaccurate as soon as the noise variance σ2
+is lower than 4 × 10−14 (see the red line in Fig. 2).
+This validates the result of Theorem 1, highlighting the
+necessary presence of noise to ensure the numerical
+stability of the estimator. Furthermore, as soon as σ2 is
+higher than this critical threshold, the estimator variance
+increases linearly with σ2 , as predicted by the bound (21)
+provided in Theorem 1. Note that the parameter ` has
+little influence on the quality of the estimator. This is due
+to the stationarity of the studied signal, allowing longrange forecasts without deterioration of the estimator.
+b) Influence of the Training Dataset Size K: Here, the
+noise variance σ is set to σ = 10−2 . Then, SigExt is run
+on 500 realizations of the discrete signal x for 200 dif-
+
+8
+
+TABLE I
+AHM S IGNAL : P ERFORMANCE OF THE E XTENSION M ETHODS AND
+THE A SSOCIATED B OUNDARY-F REE STFT
+
+10 -3
+
+10 -4
+
+10
+
+-5
+
+300
+
+500
+
+1000
+
+2000
+
+Fig. 3. Evolution of the experimental forecasting variance in function
+of the dataset size for three different values the forecasting sample
+index `.
+
+ferent values of training dataset size K, logarithmically
+equispaced from 450 to 2000. For each of these values,
+we determine the experimental bias µxp [ N − 1 + `] and
+variance γxp [ N − 1 + `, N − 1 + `]. Fig. 3 shows the experimental forecasting variance as a function of the training
+dataset size for three different values the forecasting
+sample index: ` = 1, ` = 10, and ` = 100.
+As anticipated by Theorem 1, the variance of the
+estimator decreases linearly with K1 as long as the dataset
+size is large enough. Indeed, in the log-log plot displayed
+in Fig. 3, as soon as K > 700, each of the three curves
+representing the forecasting variance as a function of K
+tends towards an asymptote of slope −1. In practice,
+the asymptotic behavior of SigExt, illustrated here on a
+synthetic signal, can be generalized to the study of reallife signals, as long as the duration of the recorded signal
+largely exceeds that of the desired extension, which
+allows the user to set K  L.
+This study overlooks the analysis of the influence of
+the parameter M, whose influence on the value of the
+experimental variance is numerically not significant as
+long as M  2K and ` < M. The choice of this parameter
+is especially crucial when the deterministic component
+of the signal is no longer stationary. The AHM, discussed
+below, is an example.
+2) Adaptive Harmonic Model: Consider a signal satisfying the AHM so that the instantaneous frequencies
+and amplitudes of its components vary over time. The
+deterministic component z of the random vector x, constructed following the model (13), takes the following
+form, for all n ∈ {1, . . . , N }:
+x[n] = cos (2πφ1 [n]) + R[n] cos (2πφ2 [n]) ,
+
+where the instantaneous amplitude R is given by:
+
+n
+R[n] = 1.4 + 0.2 cos 4π
+,
+N
+and the instantaneous phases are such that:
+
+
+
+p1
+0.01
+n
+φ1 [n] =
+n+
+cos 2π
+P
+2π
+N
+n
+20 2
+φ2 [n] = p2 +
+n .
+P 2N f s
+
+Extension
+method
+SigExt (M = 100)
+SigExt (M = 750)
+SigExt (M = 1500)
+Symmetric
+EDMD
+GPR
+TBATS
+
+CPU
+time (s)
+0.008
+0.122
+0.634
+< 0.001
+1.587
+515.787
+1776.778
+
+MSE
+(mean ± SD)
+1.133 ± 0.077
+0.479 ± 0.166
+0.907 ± 0.377
+5.452 ± 0.002
+0.983 ± 0.004
+0.479 ± 0.166
+0.686 ± 0.467
+
+Index D of
+the STFT
+0.0091 ± 0.0019
+0.0056 ± 0.0019
+0.0065 ± 0.0023
+1.8209 ± 0.0025
+0.1145 ± 0.0018
+0.0119 ± 0.0037
+0.3847 ± 0.1397
+
+Besides, the noise is chosen to be Gaussian, w ∼ N (0, I),
+and we take N = 104 , P = 750, p1 = 10, p2 = 23.
+a) Influence of the subsignals length M: To evaluate the forecasting quality, SigExt is applied to 1000
+realizations of the above-described signal. We forecast
+signal extensions of 0.1 s, i.e., L = 700. Table I shows
+the resulting mean and standard deviation (SD) of the
+experimental MSE, according to three different values of
+the subsignals length M. Note that choosing too small
+an M does not provide enough information to forecast
+the signal satisfactorily. Furthermore, too large an M
+makes the algorithm insensitive to local nonstationarities
+produced by frequency variations. The user must then
+make a compromise on the choice of M in order to
+optimize the performance of the algorithm. A choice
+of M such that the subsignals contain about a dozen
+oscillations is generally appropriate.
+b) Comparison of the extensions methods: The same
+set of experiments is run on the extension methods
+outlined in Section IV-A. The results, displayed in Table I, show that the naive extension we propose gives
+satisfying results. Indeed, when the subsignal length
+M is optimally chosen, SigExt performance is of the
+same order as that of ore sophisticated methods, like
+GPR or TBATS. Besides, even though these methods
+could be slightly more robust to perturbations, they are
+substantially limited by the computing time they require,
+which prevents them from being used to exploit realtime data. Thus, SigExt is the extension method that
+optimizes the trade-off between forecasting quality and
+computing time. Besides, the last column of Table I gives
+the performance index D of the boundary-free STFT
+associated with each extension method. This illustrates
+the ability of our algorithm to reduce boundary effects to
+a level comparable with what is possible with the GPR
+or TBATS extensions. The performance of BoundEffRed
+on other TF representations is more thoroughly analyzed
+on real-life signals in the following.
+D. Real Physiological Signals
+1) Respiratory Signal: We first consider a thoracic
+movement signal recorded by the piezo-electrical sensor
+of length 6 hours and 20 minutes. The signal is sampled
+at f s = 100 Hz. A small portion of this signal is displayed
+in Fig. 4.
+
+9
+
+TABLE II
+R ESPIRATORY S IGNAL : P ERFORMANCE OF THE E XTENSION M ETHODS
+AND THE A SSOCIATED B OUNDARY-F REE TF R EPRESENTATIONS
+Extension
+method
+
+0.292
+±4.438
+0.044
+±0.111
+0.026
+±0.112
+0.331
+±4.858
+
+SigExt
+Symmetric
+EDMD
+GPR
+
+10
+
+1
+
+SigExt
+
+Frequency (Hz)
+
+Fig. 4. Extended respiratory signal (blue) obtained by the SigExt
+forecasting (first panel), the EDMD forecasting (second panel), the GPR
+forecasting (third panel), and the TBATS forecasting (fourth panel),
+superimposed with the ground truth signal (red-dashed line).
+
+Performance index D (mean ± SD)
+STFT
+SST
+RS
+ConceFT
+0.370
+0.408
+0.866
+0.423
+±0.623 ±0.436 ±0.879
+±0.344
+1.162
+1.173
+1.022
+1.144
+±0.893 ±0.886 ±0.281
+±0.579
+0.359
+0.422
+0.828
+0.449
+±0.266 ±0.282 ±0.248
+±0.296
+0.391
+0.411
+0.897
+0.430
+±0.853 ±0.406 ±1.140
+±0.364
+
+MSE
+
+8
+6
+
+2
+
+0
+45
+
+50
+
+Time (s)
+
+55
+
+1
+
+0
+
+Frequency (Hz)
+
+From that long signal, we build a dataset of 379
+nonoverlapping signals of 60 seconds, i.e., N = 6000.
+For each segment, we apply the forecasting methods introduced in Section IV-C2, including the SigExt method
+detailed in Algorithm 2. We forecast 7-second-long extensions on each segment of the signal, corresponding
+to L = 700. Thus, in order to catch the dynamical
+behavior, the size of the training signal M is chosen so
+that M = b1.5Lc. As a result of Section IV-C1, we take:
+K = b2.5M c. The extensions obtained on one of these
+subsignals are shown in Fig. 4. The resulting MSEs of
+different methods are given in Table II. Note that the
+results are given in “mean ± standard deviation” format.
+The TBATS extension method is not implemented, as its
+excessive computing time makes it impossible to implement it on 6000 segments within a reasonable period of
+time. Note that the MSE of SigExt is on average higher
+than the MSE of EDMD or the symmetric extension, with
+a huge standard deviation. This variability is caused by
+the presence of few segments contaminated by artifacts
+so that it is unpredictable via a too simple dynamical
+model like (4). The left of Fig. 5 illustrates one of these
+outliers, where SigExt fails to catch the fast varying
+dynamic of the instantaneous amplitude to satisfactorily
+forecast the signal. The EDMD and symmetric extensions
+are more robust to those situations, as shown in this
+example, and in Table II. Nevertheless, SigExt provides
+a sufficiently relevant extension to give TF representations sparingly affected by boundary effects. On the
+right of Fig. 5, we display a comparison between the
+right boundary of SST of the same segment of signal
+(top-right), and its boundary-free SST obtained after
+the SigExt forecasting (bottom-right). The extension of
+the instantaneous frequency visible on the right side of
+the image illustrates the reduction of boundary effects
+produced despite an inaccurate signal forecasting.
+We then apply BoundEffRed for diverse TF representations: STFT, SST, RS, as well as Concentration of
+Frequency and Time (ConceFT), a generalized multitaper
+SST-based representation introduced in [33]. We mention
+that unlike other representations, the standard RS is
+
+Signals
+
+4
+
+0.5
+
+-2
+-4
+-6
+45
+
+50
+
+55
+
+Time (s)
+
+60
+
+65
+
+0.5
+
+0
+45
+
+50
+
+Time (s)
+
+55
+
+Fig. 5. Extensions of a segment of the respiratory signal (left) where
+SigExt is outperformed by the EDMD and Symmetric extensions.
+Corresponding SST (top-right) and boundary-free SST obtained with
+SigExt (bottom-right).
+
+not causal and rigorously requires knowing the STFT
+on the whole time-frequency plane before making any
+reassignment. To enable real-time implementation of RS,
+we use here a real-time version of RS proposed in [35].
+We set the extension length L accordingly to the window length used by the TF analysis tool. For instance,
+the window length used to evaluate the STFT is of 1400
+samples. To prevent the STFT from being sensitive to the
+boundaries, we set L = 700. In this way, the evaluation
+of the spectral content of the signal near its boundary
+is not limited by a lack of information in the interval
+delimited by the window support. From now on, all
+results are given for L equal to the half of the width of
+the window used in the TF transform. In Table II, we give
+the averaged performance index (25) by evaluating the
+whole TF representations (including boundaries). Even
+though SigExt performs moderately well in the sense of
+MSE, the boundary effects are dramatically reduced on
+the TF representations, and the averaged performance
+is in the same order of that given by EDMD or GPR.
+A t-test is performed to compare the performance index
+of SigExt with those of other methods. Under the null
+hypothesis that the means are equal, with a 5% significance level, the t-tests show no statistically significant
+difference between SigExt and EDMD or GPR, regardless
+of the representation considered.
+2) Two-Component Respiratory Signal: Then, we consider a second respiratory signal that contains not only
+the respiratory cycle, but also a cardiac component
+
+10
+
+2
+
+2
+
+1.5
+
+1.5
+
+Frequency (Hz)
+
+1
+
+0
+
+-1
+
+1
+
+0.5
+
+1
+
+0.5
+
+4
+2
+0
+
+0
+
+4
+
+6
+
+8
+
+10
+
+Time (s)
+
+12
+
+14
+
+16
+
+18
+
+20
+
+Time (s)
+Time (s)
+
+35 40 45 50
+
+known as the cardiogenic artifact [36]. The top of Fig. 6
+shows an excerpt of the measured thoracic impedancebased respiratory signal, recorded during a bronchoscopic sedation procedure, along with the SigExt extension. Below, the simultaneously recorded ECG signal is
+depicted. The magenta dotted lines emphasize the coincidences between the cardiogenic artifact of the respiratory signal and the QRS complexes of the ECG signal.
+Such cardiac information can be harvested and utilized
+when other first-line heart rate information resource is
+not available or broken [37].
+The top of Fig. 7 displays the ordinary SST and the
+boundary-free SST of this respiratory signal, sampled at
+64 Hz. This TF analysis brings out both components—the
+respiratory component, indicated by the green arrows, is
+located around the fundamental frequency 0.3 Hz and
+its multiples, while the cardiac component, indicated by
+the blue arrows, is located around 1.5 Hz. Note that,
+here, boundary effects are only reduced on the right-side
+boundary of the TF domain, delimited by the red dashed
+boxes. The middle of Fig. 7 show a zoom near the rightboundary of the ordinary SST, while the bottom of Fig. 7
+respectively show the respective zoom on the boundaryfree SST. In this area, the boundary-free SST makes it
+possible to disentangle the components contained in
+the signal. Moreover, the performance index of this
+representation takes the value D = 0.705. This means
+that BoundEffRed has reduced the right-side boundary
+effects by about 30% with respect to the ordinary SST.
+This shows the ability of our algorithm to work on
+signals containing several nonstationary components.
+3) Photoplethysmogram: We consider a 640-second photoplethysmogram (PPG) signal extracted from the Physionet dataset [38], [39], sampled at f s = 125 Hz. A
+portion of this signal is displayed in Fig. 8. The estimated
+5-second extensions of this segment obtained by SigExt,
+EDMD, and GPR forecastings are superimposed to the
+ground-truth extension in Fig. 8.
+We divide the signal into 32-second-long segments and
+apply BoundEffRed to each of them. Table III shows
+the performance index D of the boundary-free TF representations, averaged over the signals. For all the TF
+representations considered, the results show that SigExt
+
+35 40 45 50
+
+Fig. 6. Two-component respiratory signal (top, yellow), and the
+associated SigExt extension (blue); the simultaneously recorded ECG
+signal is below. The vertical magenta dotted lines indicate the cardiac
+cycles in the respiratory signal.
+
+0
+
+10
+
+20
+
+30
+
+40
+
+0
+
+50
+
+0
+
+10
+
+20
+
+Time (s)
+
+30
+
+40
+
+50
+
+Time (s)
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+Frequency (Hz)
+1
+
+Frequency (Hz)
+1
+
+1.2
+
+1.4
+
+1.6
+
+1.8
+
+2
+
+1.2
+
+1.4
+
+1.6
+
+1.8
+
+2
+
+Fig. 7. Ordinary SST (top-left) and boundary-free SST (top-right) of a
+two-component respiratory signal. Middle and bottom: zoom on the
+areas delimited by the red dashed rectangles; these images are rotated
+90 degrees clockwise. The window length for the SSTs is 20 seconds.
+The instantaneous frequency of the respiration is indicated by the green
+arrows, while the instantaneous frequency of the cardiogenic artifact
+is indicated by the blue arrows.
+
+SigExt
+
+Signals
+
+2
+
+2
+0
+-2
+
+Signals
+
+0
+
+2
+0
+-2
+
+Signals
+
+ECG signal
+
+6
+
+Frequency (Hz)
+
+Respiratory signal
+
+2
+
+2
+0
+-2
+35
+
+36
+
+37
+
+38
+
+39
+
+40
+
+Time (s)
+
+41
+
+42
+
+43
+
+44
+
+45
+
+Fig. 8. Extended PPG signal (blue) obtained by the SigExt forecasting (top), the EDMD forecasting (middle), and the GPR forecasting
+(bottom), superimposed with the ground truth signal (red dash).
+
+reduces boundary effects about as efficiently as the extensions given by EDMD or GPR. As for the respiratory
+signal, t-tests show no statistically significant difference
+between SigExt and EDMD or GPR, regardless of the
+representation considered. For visual inspection, the TF
+representation of SST resulting from the BoundEffRed
+strategy is shown in the bottom-right panel of Fig. 1,
+where SST is applied to the portion of PPG displayed
+in Fig. 8. It produces a significant improvement in the
+quality of the SST near boundaries. Indeed, the blurring
+visible when zooming on the right boundary of the SST
+has almost vanished. Real-time tracking of the instantaneous frequencies contained in the measured signal is
+therefore greatly facilitated.
+To further evaluate the influence of the noise level
+on the performance of BoundEffRed, we artificially add
+Gaussian noise to the measured PPG signal. It is thus
+an additional noise to the measurement noise actually
+
+11
+
+TABLE III
+PPG S IGNAL : P ERFORMANCE OF THE B OUNDARY-F REE TF
+R EPRESENTATIONS A CCORDING TO THE E XTENSION M ETHOD
+Extension
+method
+
+Performance index D (mean ± SD)
+STFT
+SST
+ConceFT
+RS
+0.280
+0.309
+0.367
+0.534
+±0.107 ±0.112
+±0.183
+±0.160
+1.168
+1.209
+1.310
+0.983
+±0.390 ±0.340
+±0.140
+±0.304
+0.289
+0.319
+0.375
+0.503
+±0.126 ±0.134
+±0.163
+±0.163
+0.276
+0.303
+0.361
+0.544
+±0.106 ±0.110
+±0.165
+±0.157
+
+MSE
+0.018
+±0.014
+0.037
+±0.007
+0.012
+±0.005
+0.018
+±0.013
+
+SigExt
+Symmetric
+EDMD
+GPR
+0.9
+
+STFT
+SST
+ConceFT
+RS
+
+0.8
+0.7
+0.6
+0.5
+0.4
+0.3
+0.2
+-10
+
+0
+
+10
+
+20
+
+30
+
+40
+
+50
+
+Fig. 9. Performance index of BoundEffRed applied on a PPG, in
+function of the SNR.
+
+contained in the signal. Fig. 9 shows the average performance index of BoundEffRed for different values of
+the Signal-to-Noise Ratio (SNR). Whatever the representation considered, BoundEffRed is relatively robust to
+noise, as long as the SNR remains above 10 dB. Below
+this level, the reduction of boundary effects gradually
+deteriorates.
+E. Real-Time Implementation
+We simulate the real-time implementation of the SST
+from BoundEffRed applied to the PPG described in
+Section IV-D3, subsampled by a factor of 2. The test is
+performed on a 2-Core Intel Core i5 CPU running at
+1.7 GHz and 7.7 GB of RAM.
+For this signal, sampled at f s = 65.5 Hz, the suitable
+window is 8 seconds long. Therefore, the extension must
+be over 4 seconds, i.e., L = 250. The forecasting step
+in each iteration of BoundEffRed then takes no more
+than tforecast = 46 ms. Denote by H ≥ 1 the hop
+size in samples, that is the number of samples between
+successive columns of the SST. Besides, since the support
+of the analysis window covers 2L samples, the update of
+the SST requires the calculation of d2L/H e new columns
+of the SST. In this example, the frequency dimension
+of the SST being 512, the computational time of one
+column is tSST = 2.08 ms, on average. A general rule
+to determine the acceptable values of H for real-time
+implementation is verifying that the computational time
+to update the boundary-free TF representation is smaller
+than the lag between H samples; that is,
+ 
+L
+H
+tforecast +
+tSST <
+.
+H
+fs
+
+In our example, taking H ≥ 8 samples is sufficient to
+ensure the feasibility of real-time implementation. This
+value is reasonable because it allows a maximum overlap
+of 98.4% of the window length. SST variations are therefore perceived gradually. Combined with the low latency
+of the algorithm, this allows for smooth monitoring of
+the real-time SST. A video clip illustrating this is available on GitHub, at https://github.com/AdMeynard/
+BoundaryEffectsReduction/tree/master/Animations.
+V. C ONCLUSION
+In this paper, we propose an algorithm, named BoundEffRed, for the real-time reduction of boundary effects in
+TF representations. This method is based on an extension
+of the signal obtained by a simple-minded and numerically efficient forecasting. We have shown theoretically
+that the chosen dynamic model is sufficient to extend
+signals formed by a sum of sine waves. Moreover, the
+low computational time allows us to switch to a real-time
+implementation of BoundEffRed, unlike other existing
+forecasting methods. The numerical results also confirmed the robustness to noise of BoundEffRed, as well
+as its ability to be applied to many TF representations.
+Additional applications to ECG and PPG are included in
+the Supplementary Materials.
+Various improvements can be considered to make the
+algorithm more robust. In particular, we have noticed
+(see Fig. 5) that when the regular oscillations of the
+observed signal break, the forecasting step is no longer
+relevant, and only slows down the calculation of the TF
+representation. A preliminary step should then be added
+to the algorithm to detect signal activity and disable the
+forecasting step when possible. More fundamentally, one
+can also consider accelerating the computational time
+by optimizing the forecasting step to improve the realtime performance of BoundEffRed. Indeed, each new
+forecast requires the inversion of the matrix XX T of size
+M × M. However, the matrix X used to forecast x N + H
+at the current iteration differs from the one used at the
+previous iteration to forecast x N by only H columns. It
+then seems natural to take inspiration from the work of
+Strobach [40], generalized by Badeau et al. [41], which
+proposes a fast algorithm for the singular value decomposition of successive data matrices taking the same
+form as X. Their algorithm is limited to the case where
+H = 1. Developing an extension of this algorithm to
+variations of H > 1 columns would
+−1then allow us to
+efficiently update the matrix XX T
+. These avenues
+will be explored in our future work.
+R EFERENCES
+[1] D. Stowell, Computational Analysis of Sound Scenes and Events.
+Springer, 2018, ch. Computational Bioacoustic Scene Analysis, pp.
+303–333.
+[2] M. Müller, D. P. W. Ellis, A. Klapuri, and G. Richard, “Signal
+processing for music analysis,” IEEE Journal of Selected Topics in
+Signal Processing, vol. 5, no. 6, pp. 1088–1110, 2011.
+
+12
+
+[3] Z. Peng, F. Chu, and Y. He, “Vibration signal analysis and
+feature extraction based on reassigned wavelet scalogram,”
+Journal of Sound and Vibration, vol. 253, no. 5, pp. 1087 –
+1100, 2002. [Online]. Available: http://www.sciencedirect.com/
+science/article/pii/S0022460X01940854
+[4] M. Akay, Detection and Estimation Methods for Biomedical Signals,
+1st ed. USA: Academic Press, Inc., 1996.
+[5] P. Stoica and R. Moses, Spectral analysis of signals. Upper Saddle
+River, N.J.: Pearson/Prentice Hall, 2005.
+[6] G. Matz, F. Hlawatsch, and W. Kozek, “Generalized evolutionary
+spectral analysis and the Weyl spectrum of nonstationary random
+processes,” IEEE Transactions on Signal Processing, vol. 45, no. 6,
+pp. 1520–1534, Jun. 1997.
+[7] K. Gröchenig, Foundations of time-frequency analysis, ser. Applied
+and Numerical Harmonic Analysis. Boston, MA: Birkhäuser Inc.,
+2001.
+[8] P. Flandrin, Time-frequency/time-scale analysis, ser. Wavelet Analysis
+and its Applications.
+San Diego: Academic Press Inc., 1999,
+vol. 10.
+[9] I. Daubechies, Ten lectures on wavelets, ser. CBMS-NSF Regional
+Conference Series in Applied Mathematics. Philadelphia, PA:
+Society for Industrial and Applied Mathematics (SIAM), 1992,
+vol. 61.
+[10] I. Daubechies, J. Lu, and H.-T. Wu, “Synchrosqueezed wavelet
+transforms: An empirical mode decomposition-like tool,” Applied
+and Computational Harmonic Analysis, vol. 30, no. 2, pp. 243 –
+261, 2011. [Online]. Available: http://www.sciencedirect.com/
+science/article/pii/S1063520310001016
+[11] F. Auger, P. Flandrin, Y.-T. Lin, S. McLaughlin, S. Meignen,
+T. Oberlin, and H.-T. Wu, “Time-frequency reassignment and
+synchrosqueezing: An overview,” IEEE Signal Processing Magazine,
+vol. 30, no. 6, pp. 32–41, 2013.
+[12] N. Delprat, B. Escudié, P. Guillemain, R. Kronland-Martinet,
+P. Tchamitchian, and B. Torrésani, “Asymptotic wavelet and
+Gabor analysis: extraction of instantaneous frequencies,” IEEE
+Transactions on Information Theory, vol. 38, no. 2, pp. 644–664, Mar.
+1992.
+[13] C. K. Chui and E. Quak, Numerical Methods in Approximation Theory, ser. ISNM 105: International Series of Numerical Mathematics.
+Basel: Birkäuser, 1992, vol. 9, ch. Wavelets on a Bounded Interval,
+pp. 53–75.
+[14] U. Depczynski, K. Jetter, K. Molt, and A. Niemöller, “The
+fast wavelet transform on compact intervals as a tool in
+chemometrics: II. Boundary effects, denoising and compression,”
+Chemometrics and Intelligent Laboratory Systems, vol. 49, no. 2, pp.
+151 – 161, 1999. [Online]. Available: http://www.sciencedirect.
+com/science/article/pii/S0169743999000374
+[15] I. Kharitonenko, X. Zhang, and S. Twelves, “A wavelet transform
+with point-symmetric extension at tile boundaries,” IEEE Transactions on Image Processing, vol. 11, no. 12, pp. 1357–1364, 2002.
+[16] L. Chen, T. Q. Nguyen, and K.-P. Chan, “Symmetric extension
+methods for m-channel linear-phase perfect-reconstruction filter
+banks,” IEEE Transactions on Signal Processing, vol. 43, no. 11, pp.
+2505–2511, 1995.
+[17] J. R. Williams and K. Amaratunga, “A discrete wavelet transform
+without edge effects using wavelet extrapolation,” The Journal of
+Fourier Analysis and Applications, vol. 3, pp. 435–449, 1997.
+[18] M. O. Williams, I. G. Kevrekidis, and C. W. Rowley, “A DataDriven Approximation of the Koopman Operator: Extending Dynamic Mode Decomposition,” Journal of Nonlinear Science, vol. 25,
+pp. 1307–1346, 2015.
+[19] C. E. Rasmussen and C. K. I. Williams, Gaussian Processes for Machine Learning, ser. Adaptive Computation and Machine Learning
+series. The MIT Press, 2006.
+[20] S. Roberts, M. Osborne, M. Ebden, S. Reece, N. Gibson, and
+S. Aigrain, “Gaussian processes for time-series modelling,”
+Philosophical Transactions of the Royal Society A: Mathematical,
+Physical and Engineering Sciences, vol. 371, no. 1984, p. 20110550,
+2013. [Online]. Available: https://royalsocietypublishing.org/
+doi/abs/10.1098/rsta.2011.0550
+[21] J. Vargas and S. McLaughlin, “Speech analysis and synthesis
+based on dynamic modes,” IEEE Transactions on Audio, Speech,
+and Language Processing, vol. 19, no. 8, pp. 2566–2578, 2011.
+[22] C. Grebogi, S. M. Hammel, J. A. Yorke, and T. Sauer, “Shadowing
+of physical trajectories in chaotic dynamics: Containment
+and refinement,” Phys. Rev. Lett., vol. 65, pp. 1527–1530,
+
+Sep 1990. [Online]. Available: https://link.aps.org/doi/10.1103/
+PhysRevLett.65.1527
+[23] A. M. D. Livera, R. J. Hyndman, and R. D. Snyder, “Forecasting
+time series with complex seasonal patterns using exponential
+smoothing,” Journal of the American Statistical Association, vol.
+106, no. 496, pp. 1513–1527, 2011. [Online]. Available: https:
+//doi.org/10.1198/jasa.2011.tm09771
+[24] M. West and J. Harrison, Bayesian forecasting and dynamic models.
+Springer Science & Business Media, 2006.
+[25] J. Fan and I. Gijbels, Local polynomial modelling and its applications:
+monographs on statistics and applied probability 66. CRC Press, 1996,
+vol. 66.
+[26] P. Hall and J. D. Opsomer, “Theory for penalised spline regression,” Biometrika, vol. 92, no. 1, pp. 105–118, 2005.
+[27] Y.-W. Chang, C.-J. Hsieh, K.-W. Chang, M. Ringgaard, and C.-J.
+Lin, “Training and testing low-degree polynomial data mappings
+via linear svm.” Journal of Machine Learning Research, vol. 11, no. 4,
+2010.
+[28] J. S. Marron, S. Adak, I. Johnstone, M. Neumann, and P. Patil, “Exact risk analysis of wavelet regression,” Journal of Computational
+and Graphical Statistics, vol. 7, no. 3, pp. 278–309, 1998.
+[29] P. R. Vlachas, W. Byeon, Z. Y. Wan, T. P. Sapsis, and P. Koumoutsakos, “Data-driven forecasting of high-dimensional chaotic systems with long short-term memory networks,” Proceedings of the
+Royal Society A: Mathematical, Physical and Engineering Sciences, vol.
+474, no. 2213, p. 20170844, 2018.
+[30] R. J. Hyndman and G. Athanasopoulos, Forecasting: principles and
+practice. OTexts, 2018.
+[31] P. J. Schmid, “Dynamic mode decomposition of numerical and
+experimental data,” Journal of Fluid Mechanics, vol. 656, pp. 5–28,
+2010.
+[32] Y.-C. Chen, M.-Y. Cheng, and H.-T. Wu, “Non-parametric and
+adaptive modelling of dynamic periodicity and trend with
+heteroscedastic and dependent errors,” Journal of the Royal
+Statistical Society Series B, vol. 76, no. 3, pp. 651–682, June
+2014. [Online]. Available: https://ideas.repec.org/a/bla/jorssb/
+v76y2014i3p651-682.html
+[33] I. Daubechies, Y. G. Wang, and H.-T. Wu, “ConceFT:
+concentration of frequency and time via a multitapered
+synchrosqueezed transform,” Philosophical Transactions of the
+Royal Society A: Mathematical, Physical and Engineering Sciences,
+vol. 374, no. 2065, p. 20150193, 2016. [Online]. Available: https:
+//royalsocietypublishing.org/doi/abs/10.1098/rsta.2015.0193
+[34] M. Korda and I. Mezić, “Linear predictors for nonlinear
+dynamical systems: Koopman operator meets model predictive
+control,” Automatica, vol. 93, pp. 149 – 160, 2018.
+[Online]. Available: http://www.sciencedirect.com/science/
+article/pii/S000510981830133X
+[35] Y.-T. Lin and H.-T. Wu, “ConceFT for Time-Varying Heart Rate
+Variability Analysis as a Measure of Noxious Stimulation During
+General Anesthesia,” IEEE Transactions on Biomedical Engineering,
+vol. 64, no. 1, pp. 145–154, 2017.
+[36] T. C. Smith, A. Green, and P. Hutton, “Recognition of cardiogenic
+artifact in pediatric capnograms,” Journal of Clinical Monitoring,
+vol. 10, no. 4, pp. 270–275, Jul. 1994.
+[37] Y. Lu, H.-T. Wu, and J. Malik, “Recycling cardiogenic artifacts
+in impedance pneumography,” Biomedical Signal Processing and
+Control, vol. 51, pp. 162 – 170, 2019. [Online]. Available: http://
+www.sciencedirect.com/science/article/pii/S1746809419300710
+[38] M. A. F. Pimentel, A. E. W. Johnson, P. H. Charlton, D. Birrenkott,
+P. J. Watkinson, L. Tarassenko, and D. A. Clifton, “Toward a
+robust estimation of respiratory rate from pulse oximeters,” IEEE
+Transactions on Biomedical Engineering, vol. 64, no. 8, pp. 1914–1923,
+2017.
+[39] A. L. Goldberger, L. A. Amaral, L. Glass, J. M. Hausdorff, P. C.
+Ivanov, M. R. G., M. J. E., M. G. B., P. C. K., and S. H. E.,
+“Physiobank, physiotoolkit, and physionet: Components of a new
+research resource for complex physiologic signals. circulation
+[online]. 101 (23)„” Circulation, vol. 101, no. 23, pp. e215–e220,
+2000.
+[40] P. Strobach, “Square hankel svd subspace tracking algorithms,”
+Signal Processing, vol. 57, no. 1, pp. 1 – 18, 1997.
+[Online]. Available: http://www.sciencedirect.com/science/
+article/pii/S016516849600182X
+[41] R. Badeau, G. Richard, and B. David, “Sliding window adaptive
+svd algorithms,” IEEE Transactions on Signal Processing, vol. 52,
+no. 1, pp. 1–10, Jan 2004.
+
+1
+
+Supplementary Materials for “An Efficient
+Forecasting Approach to Reduce Boundary
+Effects in Real-Time Time-Frequency Analysis”
+Adrien Meynard, Hau-Tieng Wu
+
+I. P ROOF OF T HEOREM 1
+A. Preliminaries
+1) Notations: Consider z ∈ R N the deterministic signal defined in (11), and denote by zk ∈ R M the subsignal
+such that
+zk [m] = z[ N − K − M + k + m] , ∀m ∈ {0, . . . , M − 1} , k ∈ {0, . . . , K } .
+Define Z ∈ R M×K and Z0 ∈ R M×K , the matrices such that
+∆
+
+Z = z0
+∆
+
+Z 0 = z1
+
+···
+···
+
+
+z K −1 ,
+
+zK .
+
+Let D ∈ R M× M be the matrix defined by D[m, m0 ] = δm+1,m0 . Recall the model (13). Based on the definition of
+matrices X and Y, we have:
+1
+1
+XX T = ZZ T + σ2 I +E(0)
+K
+|K
+{z
+}
+
+(26)
+
+∆
+
+= S (0)
+
+1
+1
+YX T = Z0 Z T + σ2 D +E(1) ,
+K
+{z
+}
+|K
+
+(27)
+
+∆
+
+= S (1)
+
+∆
+
+( a)
+
+( a)
+
+where E(a) = σE1 + σ2 E2 ,
+( a)
+
+E1 [m, m0 ] =
+
+1 K −1
+z[ N0 + m + a + k]w[ N0 + m0 + k] + w[ N0 + m + a + k]z[ N0 + m0 + k] ,
+K k∑
+=0
+
+and
+( a)
+
+E2 [m, m0 ] =
+
+1 K −1
+w[ N0 + m + a + k]w[ N0 + m0 + k] − δ(m+a)m0 ,
+K k∑
+=0
+
+with a ∈ {0, 1}. We call E(0) and E(1) error matrices because:
+(0)
+
+(0)
+
+(1)
+
+(1)
+
+E { E (0) } = E { E 1 } = E { E 2 } = 0
+
+E { E (1) } = E { E 1 } = E { E 2 } = 0 .
+
+Thus, the random matrix Ã, defined in equation (8), is expressed in function of the above-defined matrices as:
+
+
+ −1
+.
+Ã = S(1) + E(1) S(0) + E(0)
+
+Define A0 the deterministic matrix such that
+
+∆
+
+A 0 = S (1) S (0)
+
+−1
+
+.
+
+(28)
+
+A. Meynard is with the Department of Mathematics, Duke University, Durham, NC, 27708 USA.
+H.-T. Wu is with the Department of Mathematics and Department of Statistical Science, Duke University, Durham, NC, 27708 USA; Mathematics
+Division, National Center for Theoretical Sciences, Taipei, Taiwan.
+A. Meynard is the corresponding author (e-mail: adrien.meynard@duke.edu).
+
+2
+
+∆
+
+(`)
+
+(`)
+
+We denote by α0 the last row of A0` . As a result, for ` ∈ N∗ , the error vector h(`) defined by h(`) = α(`) − α0
+satisfy the equation
+
+
+h(`) = e TM Ã` − A0`
+
+
+`
+`
+T
+(1)
+(1)
+(0)
+(0 ) −1
+− A0 .
+(29)
+= eM
+(S + E )(S + E )
+
+The randomness of h(`) completely comes from the error matrices. Besides, notice that the first M − 1 rows in
+
+E(1) equal to the last M − 1 rows of E(0) . We gather all sources of randomness into a vector g ∈ R M( M+1) , defined
+
+as
+
+g = vec
+
+
+
+E (0)
+T
+e M E (1)
+
+
+
+,
+
+(30)
+
+where ”vec” denotes the vectorization operator, that concatenates the columns of a given matrix on top of one
+another. Then, we can write h(`) as h(`) = f (`) (g) where f (`) is a deterministic function such that:
+f (`) : R M( M+1) → R M
+
+g 7→ h(`) .
+
+(31)
+
+In the following paragraph, we provide some useful lemmas to prove Theorem 1.
+2) Lemmas:
+−1
+
+Lemma 1 (Expressions of A0 and S(0) ). Let S(0) be the M × M matrix defined in (26). Let A0 the M × M matrix
+defined in (28). Assume the deterministic signal z takes the form (11), and the observed noisy signal takes the form (13). Then,
+the inverse of the matrix S(0) is given by
+
+
+J
+−1
+1
+m − m0
+2
+1
+(0)
+0
+S
+[m, m ] = 2 δm,m0 −
+cos 2π p j
+,
+(32)
+4σ2
+M
+σ
+Mσ2 j∑
+=1 1 +
+2
+MΩ j
+
+and the matrix A0 is given by
+
+
+1
+2 J
+m0
+δm+1,M .
+A0 [m, m ] = δm+1,m0 +
+cos 2π p j
+4σ2
+M j∑
+M
+=1 1 +
+2
+0
+
+(33)
+
+MΩ j
+
+Let k · kmax denote the maximum norm of a matrix, i.e., kMkmax = maxn,n0 |M[n, n0 ]|. Then,
+
+
+−1
+1
+2J
+,
+S (0)
+≤ 2 1+
+M
+σ
+max
+
+
+2J
+.
+kA0 kmax ≤ max 1,
+M
+
+(34)
+(35)
+
+Proof. It follows from the signal model (11) that the matrices S(0) and S(1) take the following form:
+
+
+
+
+J
+Ω j Ω j 0 K −1
+f j0
+fj
+0
+S(a) [m, m0 ] = σ2 δ(m+ a) ,m0 + ∑
+cos
+2π
+(
+N
++
+m
++
+a
++
+k
+)
++
+ϕ
+cos
+2π
+(
+N
++
+m
++
+k
+)
++
+ϕ
+0
+0
+0
+j
+j
+K k∑
+fs
+fs
+=0
+j,j0 =1
+
+
+
+
+J Ω 2 K −1
+fj
+fj
+j
+0
+0
+= σ2 δ(m+a) ,m0 + ∑
+cos
+2π
+(
+m
++
+a
+−
+m
+)
++
+cos
+2π
+(
+2k
++
+m
++
+a
++
+m
++
+2N
+)
+0
+2K k∑
+fs
+fs
+j =1
+=0
+
+
+ Ω 2 K −1
+!
+J
+Ω2j
+fj
+fj
+j
+2
+0
+0
+= σ δ(m+a) ,m0 + ∑
+cos 2π (m + a − m ) +
+cos 2π (2k + m + a + m + 2N0 )
+2
+fs
+2K k∑
+fs
+j =1
+=0
+|
+{z
+}
+=0 because
+
+J
+
+Ω2j
+
+
+
+fj
+= σ δ(m+a) ,m0 + ∑
+cos 2π (m + a − m0 )
+2
+fs
+j =1
+2
+
+
+
+.
+
+Thus, S(0) is a circulant matrix, and is therefore diagonalizable in the Fourier basis:
+S(0) = UΛ(0) U∗ ,
+
+p0
+fj
+j
+fs = K
+
+(36)
+
+3
+
+(0)
+
+(0)
+
+0
+
+where U[m, m0 ] = √1 e−2iπmm /M and Λ(0) = diag(λ0 , . . . , λ M−1 ) with
+M
+
+
+
+fj
+cos
+2π
+q
+e−2iπqm/M
+∑
+2
+f
+s
+q =0
+j =1
+J
+
+(0)
+
+λm = σ2 + ∑
+
+= σ2 +
+
+Ω2j M−1
+
+M J
+Ω2j (δm,p j + δm,M− p j ) .
+4 j∑
+=1
+
+Therefore,
+S (0)
+which leads to
+S
+
+(0)
+
+−1
+
+−1
+
+−1
+
+= UΛ(0) U∗ ,
+
+
+
+J
+1
+2
+1
+m − m0
+[m, m ] = 2 δm,m0 −
+cos 2π p j
+.
+4σ2
+M
+σ
+Mσ2 j∑
+=1 1 +
+2
+0
+
+(37)
+
+MΩ j
+
+Directly, we have:
+−1
+
+
+
+1
+2 J
+1
+m − m0
+δ
+−
+cos
+2π
+p
+0
+j
+4σ2
+M j∑
+M
+σ2 m,m
+=1 1 + MΩ2
+j
+
+
+
+
+J
+1 
+2
+1
+2J
+1
+
+≤ 2 1 +
+1
++
+.
+≤
+
+4σ2
+M j∑
+M
+σ
+σ2
+=1 1 + MΩ2
+
+S(0) [m, m0 ] =
+
+j
+
+Thus,
+
+S (0)
+
+−1
+
+max
+
+≤
+
+1
+σ2
+
+Furthermore, combining equations (36) and (37), we have
+M −1
+
+
+
+1+
+
+2J
+M
+
+
+
+.
+
+−1
+
+A0 [m, m0 ] = ∑ S(1) [m, q]S(0) [q, m0 ]
+q =0
+
+
+
+2 J
+m0
+1
+= δm+1,m0 +
+cos 2π p j
+δm+1,M .
+4σ2
+M j∑
+M
+=1 1 +
+2
+MΩ j
+
+Directly, we have:
+
+
+ 1
+2 J
+1
+0
+A0 [m, m ] ≤
+∑ j =1
+2
+
+M
+
+1 + 4σ 2
+
+if
+
+m < M −1,
+
+if
+
+m = M−1 .
+
+MΩ j
+
+Thus,
+
+
+
+2J
+kA0 kmax ≤ max 1,
+M
+
+
+
+.
+
+Lemma 2 (Moments of g). Let g ∈ R M( M+1) be the random vector defined in (30). Assume the deterministic signal z
+takes the form (11), and the observed noisy signal takes the form (13). Then, as K → ∞, the second-order moments of g are
+bounded as follows:
+ 
+
+1
+1  2 2
+E{g[r ]g[r 0 ]} ≤
+Cz σ + 2σ4 + o
+, ∀(r, r 0 ) ∈ {0, . . . , M ( M + 1) − 1}2 ,
+(38)
+K
+K
+ 
+
+
+1
+∆
+J
+where Cz = 2 ∑ j=1 Ω j . Besides, higher-order moments of g behave as o
+.
+K
+
+4
+
+Proof. In the following, for all r ∈ {0, . . . , M ( M + 1) − 1}, we denote g[r ] = σg1 [r ] + σ2 g2 [r ], where
+(a )
+
+g1 [r ] = E1 r [mr , mr0 ] =
+(a )
+
+g2 [r ] = E2 r [mr , mr0 ] =
+
+1 K −1
+zk [mr + ar ]wk [mr0 ] + wk [mr + ar ]zk [mr0 ] ,
+K k∑
+=0
+1 K −1
+wk [mr + ar ]wk [mr0 ] − δmr + ar , mr0 ,
+K k∑
+=0
+
+and mr , mr0 , ar are the corresponding coordinates of the matrices associated with r through the vectorization operation (30). Thus, order-two moments of this random vector is split as follows:
+E{g[r ]g[r 0 ]} = σ2 E{g1 [r ]g1 [r 0 ]} + σ3 E{g1 [r ]g2 [r 0 ]} + σ3 E{g2 [r ]g1 [r 0 ]} + σ4 E{g1 [r ]g1 [r 0 ]} .
+
+(39)
+
+J
+By definition of the signal z (see equation (11)), we have |z[n]| ≤ ∑ j=1 Ω j , for all n ∈ N. Thus, by a direct bound,
+
+we have
+
+1
+E{g1 [r ]g1 [r ]} = 2 E
+K
+0
+
+ K −1
+
+∑0 zk [mr + ar ]zk0 [mr0 + ar0 ]wk [mr0 ]wk0 [mr0 0 ] + zk [mr0 ]zk0 [mr0 + ar0 ]wk [mr + ar ]wk0 [mr0 0 ]
+
+k,k =0
+
++ zk [mr + ar ]zk0 [mr0 0 ]wk [mr0 ]wk0 [mr0 + ar0 ] + zk [mr0 ]zk0 [mr0 0 ]wk [mr + ar ]wk0 [mr0 + ar0 ]
+J
+
+1
+≤ 2
+K
+
+∑ Ωj
+
+j =1
+
+!2
+
+K −1
+
+∑
+0
+
+k,k =0
+
+
+E wk [mr0 ]wk0 [mr0 0 ]
+
+Besides, since w is a white noise,
+
+Moreover, 0 ≤ mr0 − mr0 0 ≤ M − 1. Thus,
+
+
++ E wk [mr + ar ]wk0 [mr0 0 ]
+
+
++ E wk [mr0 ]wk0 [mr0 + ar0 ]
+
+
+1 K −1
+E wk [mr0 ]wk0 [mr0 0 ]
+∑
+2
+K k,k0 =0
+
++ |E {wk [mr + ar ]wk0 [mr0 + ar0 ]}|
+
+(40)
+
+1 K −1
+δk+mr0 , k0 +m0 0
+r
+K2 k,k∑
+0 =0
+
+1
+= 2 K − mr0 − mr0 0 .
+K
+
+=
+
+
+1
+M−1
+1 K −1
+≤
+−
+E wk [mr0 ]wk0 [mr0 0 ]
+∑
+2
+2
+K
+K
+K k,k0 =0
+
+Therefore,
+
+
+
+
+1 K −1
+E wk [mr0 ]wk0 [mr0 0 ]
+∑
+2
+K k,k0 =0
+
+=
+
+1
++o
+K
+
+≤
+
+1
+.
+K
+
+ 
+1
+.
+K
+
+Similar calculations lead to the same results for the other three terms making up the sum (40). Therefore, we have:
+!2 
+ 
+J
+4
+1
+0
+E{g1 [r ]g1 [r ]} ≤ ∑ Ω j
++o
+K
+K
+j =1
+ 
+2
+Cz
+1
+≤
++o
+.
+(41)
+K
+K
+Besides, since odd-order moments of a zero-mean multivariate Gaussian random vector are zero, we have:
+E{g1 [r ]g2 [r 0 ]} =
+
+
+
+1 K −1
+zk [mr + ar ]E wk [mr0 ]wk0 [mr0 + ar0 ]wk0 [mr0 0 ] + zk [mr0 ]E wk [mr + ar ]wk0 [mr0 + ar0 ]wk0 [mr0 0 ]
+K2 k,k∑
+0 =0
+
+− δm 0 +a 0 ,m0 0 E{g1 [r ]}
+r
+
+=0.
+Similarly,
+
+r
+
+r
+
+(42)
+E{g2 [r ]g1 [r 0 ]} = 0 .
+
+(43)
+
+5
+
+Besides, by a direct calculation, we have:
+E{g2 [r ]g2 [r 0 ]} =
+
+1 K −1 
+1 K −1 
+E wk [mr + ar ]wk [mr0 ]wk0 [mr0 + ar0 ]wk0 [mr0 0 ] − δmr +ar ,mr0
+E wk0 [mr0 + ar0 ]wk0 [mr0 0 ]
+∑
+2
+K k∑
+K k,k0 =0
+0 =0
+1 K −1 
+∑ E wk [mr0 ]wk0 [mr0 0 ] + δmr +ar ,mr0 δmr0 +ar0 ,mr0 0
+r K
+k =0
+
+− δm 0 +a 0 ,m0 0
+r
+
+=
+
+r
+
+1 K −1 
+E wk [mr + ar ]wk [mr0 ]wk0 [mr0 + ar0 ]wk0 [mr0 0 ] − δmr +ar ,mr0 δm 0 + a 0 ,m0 0
+r
+r
+r
+K2 k,k∑
+0 =0
+
+(44)
+
+Moreover, using the results of the Isserlis’ theorem [1] to express fourth-order moments of a Gaussian random
+vector as a function of its second-order moments, we expand sum (44) as follows:
+E{g2 [r ]g2 [r 0 ]} =
+
+
+1 K −1 
+E wk [mr + ar ]wk [mr0 ] E wk0 [mr0 + ar0 ]wk0 [mr0 0 ] − δmr +ar ,mr0 δm 0 + a 0 ,m0 0
+∑
+2
+r
+r
+r
+K k,k0 =0
+
++
++
+
+
+1 K −1
+E {wk [mr + ar ]wk0 [mr0 + ar0 ]} E wk [mr0 ]wk0 [mr0 0 ]
+∑
+2
+K k,k0 =0
+
+
+1 K −1 
+E wk [mr + ar ]wk0 [mr0 0 ] E wk [mr0 ]wk0 [mr0 + ar0 ]
+K2 k,k∑
+0 =0
+
+1 K −1
+δk+mr + ar ,k0 +mr0 + ar0 δk+m0 r,k0 +m0 0 + δk+mr + ar ,k0 +m0 0 δk+mr0 ,k0 +m 0 + a 0
+r
+r
+r
+r
+K2 k,k∑
+0 =0
+
+1 
+= 2 δmr0 −m0 0 ,mr +ar −m 0 −a 0 (K − |mr0 − mr0 0 |) + δmr +ar −m0 0 ,mr0 −m 0 −a 0 (K − |mr + ar − mr0 0 |)
+r
+r
+r
+r
+r
+r
+K
+
+
+
+1
+1 
+=
++ δmr0 +m0 0 ,mr +ar +m 0 +a 0 + o
+δ 0 0
+.
+r
+r
+r
+K mr −mr0 ,mr +ar −mr0 − ar0
+K
+
+=
+
+Therefore,
+
+E{g2 [r ]g2 [r 0 ]} ≤
+
+2
++o
+K
+
+ 
+1
+.
+K
+
+(45)
+
+Thus, combining results (41), (42), (43) and (45) into expression (39) gives the following bound:
+ 
+
+1
+1  2 2
+Cz σ + 2σ4 + o
+.
+E{g[r ]g[r 0 ]} ≤
+K
+K
+
+Concerning higher-order moments, let T ≥ 3 denote the order of the moment defined by E{∏θT=1 g[rθ ]}. Thus,
+(
+)
+(
+)
+
+T
+T 
+2
+E ∏ g[rθ ] = E ∏ σg1 [rθ ] + σ g2 [rθ ]
+θ =1
+
+θ =1
+
+1
+= TE
+K
+
+(
+
+K −1
+
+T
+
+∏ ∑ ρθ,k w[k + mr0 θ ], w[k + mrθ + arθ ]
+
+θ =1 k =0
+K −1
+K −1
+
+1
+= T ∑ ··· ∑ E
+K k =0
+k =0
+T
+
+1
+
+where
+
+
+
+(
+
+T
+
+∏ ρθ,kθ
+
+θ =1
+
+
+
+
+
+!)
+
+w[k θ + mr0 θ ], w[k θ + mrθ + arθ ]
+
+
+
+)
+
+,
+
+(46)
+
+ρθ,k (u, v) = σzk [mrθ + arθ ]u + σzk [mr0 θ ]v + σ2 uv − δmr + ar , mr0 .
+θ
+
+Thus,
+E
+where
+CT = max
+
+(k1 ,...,k T )
+
+E
+
+(
+
+(
+
+T
+
+T
+
+∏ g [r θ ]
+
+θ =1
+
+)
+
+≤
+
+θ
+
+νK
+CT ,
+KT
+
+∏ ρθ,kθ (w[kθ + mr0 θ ], w[kθ + mrθ + arθ ])
+
+θ =1
+
+θ
+
+)
+
+,
+
+and νK is the number of nonzero terms in the sum (46). Note that CT is independent of K (but depends on z and
+ν
+σ). The behavior of the order T moment in function of K is therefore only determined by the ratio KT .
+K
+
+6
+
+Let us bound νK . Fix k1 . For each of the other indexes of summation k θ (θ ∈ {2, . . . , T }), there are four values that
+make ρθ,kθ (w[k θ + mr0 θ ], w[k θ + mrθ + arθ ]) not independent of ρ1,k1 (w[k1 + mr0 1 ], w[k1 + mr1 + ar1 ]). Indeed, since w
+is a white noise these quantities are independent except when k θ is such that:
+k θ = k1 + mr0 1 − mr0 θ
+
+k θ = k1 + mr1 + ar1 − mr0 θ
+k θ = k1 + mr0 1 − mrθ − arθ
+
+k θ = k 1 + m r1 + a r1 − m r θ − a r θ .
+
+Consequently, for each value of k1 there exist at least (K − 4) T −1 combinations of (k2 , . . . , k T ) where we have
+(
+)
+T
+
+0
+E ∏ ρθ,kθ (w[k θ + mrθ ], w[k θ + mrθ + arθ ]) = E ρ1,k1 (w[k1 + mr0 1 ], w[k1 + mr1 + ar1 ])
+θ =1
+
+×E
+
+(
+
+T
+
+∏
+
+θ =2
+
+ρθ,kθ (w[k θ + mr0 θ ], w[k θ + mrθ + arθ ])
+
+)
+
+= 0,
+
+
+because E ρ1,k1 (w[k1 + mr0 1 ], w[k1 + mr1 + ar1 ]) = 0. Therefore, at least K (K − 4) T −1 of the sum (46) are zero.
+Because T ≥ 3, we develop similar arguments on k2 and k3 to determine other cases where this correlation term
+vanishes. We subtract these cases to K T , the total number of combinations of (k1 , . . . , k T ) to obtain the following
+maximum bound on the number of nonzero terms in the sum (46):
+Thus,
+E
+
+νK ≤ K T − 3K (K − 4) T −1 + 3K (K − 4)(K − 8) T −2 − K (K − 4)(K − 8)(K − 12) T −3 .
+(
+
+T
+
+∏ g [r θ ]
+
+θ =1
+
+)
+
+K T − 3K (K − 4) T −1 + 3K (K − 4)(K − 8) T −2 − K (K − 4)(K − 8)(K − 12) T −3
+KT
+!
+
+
+
+
+
+
+
+
+
+4 T −1
+4
+8 T −2
+4
+8
+12 T −3
+≤ CT 1 − 3 1 −
++3 1−
+1−
+− 1−
+1−
+1−
+K
+K
+K
+K
+K
+K
+ 
+
+12 24( T − 2)
+4
+8
+12( T − 3)
+1
+12( T − 1)
+≤ CT 1 − 3 +
++3−
+−
+−1+ + +
++o
+K
+K
+K
+K
+K
+K
+K
+ 
+1
+≤ CT o
+.
+K
+
+≤ CT
+
+Therefore,
+E
+
+(
+
+T
+
+∏ g [r θ ]
+
+θ =1
+
+)
+
+=o
+
+ 
+1
+,
+K
+
+∀T ≥ 3 .
+
+Lemma 3 (Bounds on the derivatives of f (`) at the origin). Let f (`) : R M( M+1) → R M denote the multivariate function
+defined in (31). Assume the deterministic signal z takes the form (11), and the observed noisy signal takes the form (13). Then,
+the first-order derivatives of f (`) at the origin are bounded as follows:
+(`)
+
+∂ fm
+∂g[r ]
+where
+
+g =0
+
+≤
+
+d1,z,M,`
+,
+σ2
+
+∀m ∈ {0, . . . , M − 1} , r ∈ {0, . . . , M( M + 1) − 1} ,
+
+(47)
+
+
+
+`−1 
+
+ 
+
+2J
+2J
+2J
+∆
+d1,z,M,` = (2 + (` − 2) M ) M`−1 max 1,
+1 + max 1,
+1+
+.
+M
+M
+M
+
+Besides, the second-order derivatives of f (`) at the origin are bounded as follows:
+(`)
+
+∂2 f m
+∂g[r ]∂g[r 0 ]
+where
+∆
+
+d2,z,M,` =
+
+
+
+2J
+1+
+M
+
+g =0
+
+2 
+
+≤
+
+d2,z,M,`
+,
+σ4
+
+
+
+2J
+max 1,
+M
+
+∀m ∈ {0, . . . , M − 1} , (r, r 0 ) ∈ {0, . . . , M( M + 1) − 1}2 ,
+
+`−2 
+
+
+
+2J
+1 + max 1,
+M
+
+ 
+
+0
+d2,M,` + (d2,M,` + 2d2,M,
+` ) max
+
+
+
+2J
+1,
+M
+
+(48)
+
+
+
+,
+
+7
+
+0
+and d2,M,` and d2,M,
+` are only depending on M and `.
+
+Proof. Concerning the first-order derivative, from (29), we have:
+∂ f (`)
+∂Ã`
+= e TM
+∂g[r ]
+∂g[r ]
+`−1
+
+= ∑ e TM Ãλ
+λ =0
+
+Thus,
+
+∂ f (`)
+∂g[r ]
+
+`−1
+
+g =0
+
+∂Ã `−1−λ
+Ã
+.
+∂g[r ]
+∂Ã
+A`−1−λ .
+∂g[r ] g=0 0
+
+= ∑ e TM A0λ
+λ =0
+
+(49)
+
+Furthermore,
+
+
+ −1
+ −1 
+ ∂ S (0) + E (0)
+∂Ã
+∂E(1)  (0)
+=
+S + E (0)
++ S (1) + E (1)
+∂g[r ]
+∂g[r ]
+∂g[r ]
+
+
+ −1
+
+ Jmr ,mr0 S(0) + E(0)
+
+
+
+
+ −1
+ −1
+=
+
+(
+1
+)
+(
+1
+)
+(
+0
+)
+(
+0
+)
+ (1 − δmr ,0 )Jmr −1,mr0 + S + E
+S +E
+Jmr ,mr0
+S (0) + E (0)
+
+if
+
+ar = 1,
+
+else,
+
+∆
+
+where Jmr ,mr0 ∈ R M× M is the matrix such that Jmr ,mr0 [m, m0 ] = δm,mr δm0 ,mr0 . Thus,
+
+ J
+(0) −1
+if ar = 1,
+0S
+∂Ã
+mr ,mr
+
+=
+−
+1
+∂g[r ] g=0  (1 − δmr ,0 )Jm −1,m0 + A0 Jm ,m0 S(0)
+else.
+r
+
+r
+
+r
+
+r
+
+Then,
+
+∂Ã
+∂g[r ] g=0
+
+max
+
+≤ (1 + kA0 kmax ) S(0)
+
+−1
+
+max
+
+.
+
+Given bounds (35) and (34), we have that:
+∂Ã
+∂g[r ] g=0
+
+max
+
+≤
+
+
+
+
+ 
+
+2J
+2J
+1
+1 + max 1,
+1+
+.
+M
+M σ2
+
+(50)
+
+Besides given expression (49), for all r ∈ {0, . . . , M ( M + 1) − 1}, we have:
+(`)
+
+∂ fm
+∂g[r ]
+
+g =0
+
+≤ 2MkA0`−1 kmax
+
+`−2
+
+∂Ã
+∂g[r ] g=0
+
+max
+
++ M2 ∑ kA0λ kmax
+
+`−1
+≤ (2 + (` − 2) M) M`−1 kA0 kmax
+
+λ =1
+
+∂Ã
+∂g[r ] g=0
+
+∂Ã
+∂g[r ] g=0
+
+max
+
+kA0`−1−λ kmax
+
+.
+max
+
+Therefore, given bounds (35) and (50), we have:
+(`)
+
+∂ fm
+∂g[r ]
+
+g =0
+
+≤
+
+d1,z,M,`
+.
+σ2
+
+Concerning the second-order derivative, we have:
+`−1
+∂2 f (`)
+∂Ãλ ∂Ã `−1−λ
+∂2 Ã
+∂Ã ∂Ã`−1−λ
+= ∑ e TM
+Ã
++ e TM Ãλ
+Ã`−1−λ + e TM Ãλ
+0
+0
+0
+∂g[r ]∂g[r ]
+∂g[r ] ∂g[r ]
+∂g[r ]∂g[r ]
+∂g[r ] ∂g[r 0 ]
+λ =0
+`−1 λ−1
+
+= ∑ ∑ e TM Ã p
+λ =1 p =0
+
+`−2 `−λ−2
+
++∑
+
+∂Ã λ−1− p ∂Ã `−1−λ `−1 T l
+∂2 Ã
+Ã
+Ã
++ ∑ e M Ã
+Ã`−1−λ
+0
+0]
+∂g[r ]
+∂g[r ]
+∂g
+[
+r
+]
+∂g
+[
+r
+λ =0
+∂Ã
+
+∂Ã
+
+∑ eTM Ãλ ∂g[r] Ã p ∂g[r0 ] Ã`−λ−2− p .
+
+λ =0 p =0
+
+8
+
+Thus,
+∂2 f (`)
+∂g[r ]∂g[r 0 ]
+
+`−1 λ−1
+
+g =0
+
+p
+
+= ∑ ∑ e TM A0
+λ =1 p =0
+
+`−1
+
++ ∑ e TM A0λ
+λ =0
+
+∂Ã
+λ−1− p ∂ Ã
+A0
+A`−1−λ
+0
+∂g[r ] g=0
+∂g[r ] g=0 0
+
+`−2 `−2−λ
+∂2 Ã
+∂Ã
+p ∂ Ã
+`−λ−2− p
+`−1−λ
+A
++
+A0
+A0
+.
+∑ ∑ eTM A0λ ∂g[r]
+0]
+∂g[r ]∂g[r 0 ] g=0 0
+∂g
+[
+r
+g =0
+g =0
+λ =0 p =0
+
+Besides, the second-order derivative of the matrix Ã is given by
+
+0
+
+
+
+ −1
+
+ −1
+
+
+(0) + E (0)
+(0) + E (0)
+
+
+S
+S
+J
+J
+0
+0
+m 0 ,m
+ mr ,mr
+
+
+ −1
+
+ −1 r r 0 
+
+
+(0) + E (0)
+(
+0
+)
+(
+0
+)
+
+S
+S
++
+E
+J
+J
+0
+0
+0
+
+mr ,mr
+
+ mr ,mr0
+
+
+
+
+ −1
+
+
+2
+∂ Ã
+(1 − δmr ,0 )Jmr −1,mr0 + S(1) + E(1) S(0) + E(0)
+Jmr ,mr0
+=
+
+ −1
+
+ −1
+
+∂g[r ]∂g[r 0 ]
+
+
+(0) + E (0)
+(0) + E (0)
+
+S
+×
+S
+J
+0
+
+mr0 ,m 0
+
+
+
+
+r
+
+ −1
+
+
+
+(1) + E (1)
+(0) + E (0)
+
++
+(
+1
+−
+δ
+)
+J
++
+S
+S
+J
+0
+0
+
+mr0 ,0 mr0 −1,m 0
+mr0 ,m 0
+
+r
+r
+
+
+
+ −1
+
+ −1
+
+
+
+(
+0
+)
+(
+0
+)
+(
+0
+)
+(
+0
+)
+× S +E
+Jmr ,mr0 S + E
+
+Thus, the second-order derivative of the matrix Ã at the origin is such that
+
+0
+
+
+
+−1
+−1
+
+
+Jmr ,mr0 S(0) Jm 0 ,m0 0 S(0)
+
+
+r
+r
+
+
+−1
+−1
+∂2 Ã
+Jm 0 ,m0 0 S(0) Jmr ,mr0 S(0)
+=
+r
+r
+0
+
+
+∂g[r ]∂g[r ] g=0 
+−1
+−1
+
+
+S(0) Jm 0 ,m0 0 S(0)
++
+A
+J
+(
+1
+−
+δ
+)
+J
+0
+0
+
+0
+m
+,0
+m
+,m
+m
+−
+1,m
+r
+
+r
+r
+r
+r
+r
+
+r
+
+
+
+−1
+
+(0) −1
+ + (1 − δ
+S (0) J
+)J
+0
+0 +A J
+0S
+mr0 ,0
+
+Then,
+
+∂2 Ã
+∂g[r ]∂g[r 0 ] g=0
+
+max
+
+≤
+
+0 mr0 ,m 0
+
+mr0 −1,m 0
+
+r
+
+r
+
+
+
+
+
+S (0)
+
+ar = 1
+
+and
+
+ar0 = 1,
+
+if
+
+ar = 1
+
+and
+
+ar0 = 0,
+
+if
+
+ar = 0
+
+and
+
+ar0 = 1,
+
+else.
+
+if
+
+ar = 1
+
+and
+
+ar0 = 1,
+
+if
+
+ar = 1
+
+and
+
+ar0 = 0,
+
+if
+
+ar = 0
+
+and
+
+ar0 = 1,
+
+mr ,mr
+
+else.
+
+if
+
+ar = 1 or
+
+−1 2
+
+max
+
+if
+
+−1 2
+S (0)
+max
+
+(51)
+
+ar 0 = 1 ,
+
+
+ 2 (1 + kA0 kmax )
+else
+ 
+2
+
+
+2J
+1
+2J
+.
+1+
+≤ 2 1 + max 1,
+M
+M
+σ4
+
+(52)
+
+Returning to equation (51), for all r, r 0 ∈ {0, . . . , M ( M + 1) − 1} and m ∈ {0, . . . , M − 1}, we have:
+(`)
+
+∂2 f m
+∂g[r ]∂g[r 0 ]
+
+g =0
+
+`−2
+≤ d2,M,` kA0 kmax
+
+∂Ã
+∂g[r ]
+
+max
+
+∂Ã
+∂g[r 0 ]
+
+max
+
+0
+`−1
++ d2,M,
+` k A0 kmax
+
+∂2 Ã
+∂g[r ]g[r 0 ]
+
+max
+
+,
+
+0
+where d2,M,` and d2,M,
+` are only depending on M and `. Besides, given results (28), (50) and (52), we have:
+(`)
+
+∂2 f m
+∂g[r ]∂g[r 0 ]
+
+g =0
+
+≤
+
+d2,z,M,`
+.
+σ4
+
+B. Expression of the Bias µ.
+By definition of the measurement noise, µ[n] = 0 when n ∈ I. Outside the measurement interval I, denote by `
+(`)
+the index such that n = N − 1 + `. Then, given that h(`) = α(`) − α0 , we deduce from expression (16) that
+µ[n] = E{α(`) }zK + σE{α(`) wK } − z[n]
+(`)
+
+= α0 zK + E{h(`) }zK + σE{h(`) wK } − z[ N − 1 + `]
+∆
+
+= e1 [`] + e2 [`] + e3 [`] ,
+
+(53)
+
+9
+
+where
+(`)
+
+e1 [`] = α0 zK − z[ N − 1 + `] ,
+
+(54)
+
+e3 [`] = σE{h(`) wK } .
+
+(56)
+
+e2 [`] = E{h
+
+(`)
+
+}zK ,
+
+(55)
+
+(1)
+
+Let us first determine an upper bound on |e1 [n]|. Since α0 is the last row of A0 , we deduce from the expression (33) of A0 that
+
+2 J
+1
+m
+(1)
+α0 [ m ] =
+.
+(57)
+cos
+2π
+p
+j
+∑
+M j=1 1 + 4σ22
+M
+MΩ j
+
+Besides, from equation (33), we also have
+
+
+
+z [ N − M + 1]
+..
+
+
+
+
+.
+A0 z K = 
+.
+ z [ N − 1] 
+(1)
+
+α0 z K
+
+The upward-shift property is thus successively inducted when ` increases; that is,
+
+
+z[ N − M + `]
+
+
+..
+
+
+.
+
+
+ z [ N − 1] 
+
+
+A0` zK = 
+(1)
+.
+α0 z K
+
+
+
+
+..
+
+
+.
+
+
+(`)
+α0 z K
+(`)
+
+Then, α0 , the last row of A0` follows the following recurrence relation:
+(1)
+
+(`)
+
+α0 zK = α0 Ã0`−1 zK
+M−`
+
+M −1
+
+(1)
+
+= ∑ α0 [ m ] z [ N − M + ` + m − 1] +
+m =0
+
+Hence,
+
+∑
+
+m= M −`+1
+
+(1)
+
+(m− M+`)
+
+α0 [ m ] α0
+
+zK .
+
+(`)
+
+e1 [`] = α0 zK − z[ N − 1 + `]
+M
+
+m =0
+M
+
+∑
+
+α0 [m]e1 [m − M + `] .
+
+(1)
+
+m= M −`+1
+M −1
+
+m =0
+
+Besides, equation (57) gives
+(1)
+
+m= M −`+1
+
+(1)
+
+
+
+
+M −1
+2
+1
+m
+N+m
+cos
+2π
+p
+cos
+2π
+p
++
+ϕ
+0
+0
+j
+j
+j
+M 1 + 4σ22 m∑
+M
+M
+j,j0 =1
+MΩ j | =0
+{z
+}
+N +ϕ
+=δj,j0 M
+cos
+2π
+p
+(
+)
+jM
+j
+2
+
+
+J
+1
+N
+= ∑ Ωj
+cos 2π p j
++ ϕj .
+4σ2
+M
+1 + MΩ2
+j =1
+
+∑ α0 [ m ] z [ N − M + ` + m − 1] =
+
+m =0
+
+
+
+(1)
+(m− M+`)
+α0 [ m ] α0
+z K − z [ N − M + ` + m − 1]
+
+M −1
+
+= ∑ α0 [m]z[ N − M + ` + m − 1] − z[ N − 1 + `] +
+M
+
+∑
+
+(1)
+
+= ∑ α0 [m]z[ N − M + ` + m − 1] − z[ N − 1 + `] +
+
+J
+
+∑ Ω j0
+
+j
+
+10
+
+Thus:
+
+
+
+J
+
+|e1 [`]| =
+
+
+∑ Ωj 
+
+j =1
+J
+
+≤ ∑ Ωj
+j =1
+
+≤
+
+
+
+
+
+M −1
+N
+
+(1)
+−
+1
+cos
+2π
+p
++
+ϕ
++
+
+j
+j
+∑ α0 [m]e1 [m − M + `]
+2
+M
+1 + 4σ 2
+m= M−`+1
+
+1+
+
+1
+
+MΩ j
+
+1
+
+4σ2
+MΩ2j
+
+−1 +
+
+2J `−1
+|e1 [λ]|
+M λ∑
+=1
+
+4σ2 J 1
+2J `−1
++
+|e1 [λ]| .
+M j∑
+Ω
+M λ∑
+=1 j
+=1
+
+(58)
+
+Then, by induction from the inequality (58), we have
+
+
+4σ2
+2J `−1 J 1 ∆ (1) 2
+1+
+|e1 [`]| ≤
+∑ Ωj = c σ ,
+M
+M
+j =1
+
+(59)
+
+`−1
+4 
+1
+J
+1 + 2J
+. Note that c(1) is not depending on σ or K.
+∑ j =1
+M
+M
+Ωj
+Let usnow determine an upper bound on |e2 [`]|. Since E{g[r ]} = 0 and moments of order 3 and higher behave
+1
+as o
+, a second-order Taylor expansion of h(`) gives
+K
+ 
+(`)
+M ( M +1)−1
+1
+1
+∂2 f m
+0
+E
+{
+g
+[
+r
+]
+g
+[
+r
+]}
++
+o
+E{h(`) [m]} =
+.
+(60)
+0]
+2 r,r∑
+∂g
+[
+r
+]
+∂g
+[
+r
+K
+0 =0
+
+where c(1) =
+
+g =0
+
+(`)
+
+Thus, given the bounds (38) on |E{g[r ]g[r 0 ]}| and (48) on the second derivative of f m , we have:
+
+M 3 ( M + 1)2
+∂2 f (`)
+1  2 2
+4
+C
+σ
++
+2σ
++o
+z
+4
+∂g[r ]∂g[r 0 ]
+K
+g=0 max
+!
+ 
+(2)
+c2
+1
+1
+(2)
+≤
+c1 + 2 + o
+,
+K
+K
+σ
+
+|e2 [`]| ≤ Cz
+
+ 
+1
+K
+
+(61)
+
+where
+M 3 ( M + 1)2
+Cz d2,z,M,` ,
+2
+3
+2
+(2) ∆ M ( M + 1 )
+c2 =
+Cz3 d2,z,M,` .
+4
+(2) ∆
+
+c1 =
+
+Let us now determine an upper bound on |e3 [`]|. A second-order Taylor expansion of h(`) gives
+ 
+(`)
+M−1 M( M +1)−1
+∂ fm
+1
+(`)
+E{ h w K } = ∑
+E{g[r ]wK [m]} + o
+∑ ∂g[r]
+K
+m =0
+r =0
+
+(62)
+
+g =0
+
+Indeed, the third-order moments E{g[r ]g[r 0 ]w
+Then,
+
+ 
+1
+. Besides,
+K [ m ]}, behave as o
+K
+
+E{g[r ]wK [m]} = σE{g1 [r ]wK [m]} + σ2 E{g2 [r ]wK [m]} .
+
+1 K −1
+zk [mr + ar ]E wk [mr0 ]wK [m] + zk [mr0 ]E {wk [mr + ar ]wK [m]}
+∑
+K k =0
+!
+J
+2
+Cz
+≤
+Ωj =
+.
+K j∑
+K
+=1
+
+(63)
+
+|E{g1 [r ]wK [m]}| =
+
+(64)
+
+11
+
+E{g2 [r ]wK [m]} =
+
+1 K −1 
+E wk [mr + ar ]wk [mr0 ]wK [m] − δmr +ar ,mr0 E {wK [m]}
+K k,∑
+=0
+
+=0.
+
+Thus, combining results (64) and (65) into expression (63) gives the following bound:
+σ
+|E{g[r ]wK [m]}| ≤ Cz .
+K
+
+(65)
+
+(66)
+
+(`)
+
+Thus, given the bound (47) on the first derivative of f m , and from (62) we have:
+d
+σ ∆ c (3)
+`
+C
+=
+,
+|e3 [`]| ≤ σM2 ( M + 1) 1,z,M,
+z
+K
+K
+σ2
+
+(67)
+
+∆
+
+where c(3) = M2 ( M + 1)d1,z,M,` Cz .
+Thus, combining bounds (59) on e1 , (61) on e2 and (67) on e3 gives the following bound of the bias:
+!
+ 
+(2)
+1
+1 c2
+(2)
+(3)
+(1) 2
++
+c
++
+c
++
+o
+.
+|µ[n]| ≤ c σ +
+1
+2
+K
+K
+σ
+
+(68)
+
+C. Expression of the Covariance γ.
+Outside the measurement interval I, denote by ` the index such that n = N − 1 + `. Then, given that h(`) =
+(`)
+α(`) − α0 , we have
+
+2
+
+ n
+o
+2 
+
+(`)
+(`)
+(`)
+(`)
+(`)
+(`)
+h zK
+γ[n, n] = α0 zK + 2 α0 zK E h
+zK + E
++ 2σα0 E{wK h(`) }zK + 2σα0 zK E{h(`) wK }
+
+2 
+(`)
+(`) 2
+h(`) wK
++ 2σ2 α0 E{wK h(`) wK } − z[n]2 − 2z[n]µ[n] − µ[n]2
++ σ2 E
++ 2σE{h(`) wK h(`) }zK + σ2 α0
+
+2 
+2
+
+(`)
+(`)
+(`) 2
+h(`) zK
++ 2σα0 E{wK h(`) }zK + 2σE{h(`) wK h(`) }zK
+− z [ n ] − α0 z K + z [ n ] + E
+= σ 2 α0
+
+2 
+(`)
+(`)
+2
+h wK
++ 2σ2 α0 E{wK h(`) wK }
++σ E
+∆
+
+= η1 [ n ] + η2 [ n ] + η3 [ n ] + η4 [ n ] + η5 [ n ] + η6 [ n ] + η7 [ n ] ,
+
+where
+(`) 2
+
+η1 [ n ] = σ 2 α 0
+
+,
+
+(`)
+
+η4 [n] = 2σα0 E{wK h(`) }zK ,
+
+2
+
+(`)
+η2 [ n ] = − z [ n ] − α 0 z K + z [ n ] ,
+
+η5 [n] = σE{h(`) wK h(`) }zK ,
+
+(`)
+
+η7 [n] = 2σ2 α0 E{wK h(`) wK } .
+
+2 
+h(`) zK
+,
+
+2 
+(`)
+2
+η6 [ n ] = σ E
+h wK
+,
+η3 [ n ] = E
+
+
+
+Let us now determine an upper bound on each of these terms.
+(`)
+First, since kα0 k2 ≤ M kA0` k2max , we have:
+η1 [n] ≤ σ2 M A0`
+
+2
+
+max
+
+`
+≤ σ2 M` kA0 k2max
+2
+
+`
+
+≤ σ M max 1,
+
+
+
+2J
+M
+
+ 2` !
+
+.
+
+Second, by definition of e2 and e3 (see expressions (55) and (56)), η2 takes the following form:
+ 
+1
+2
+η2 [n] = (e2 [n] + e3 [n]) = o
+.
+K
+
+(69)
+
+(70)
+
+12
+
+Third, second-order Taylor expansions of h(`) give:
+η3 [ n ] ≤
+
+≤
+
+n
+o
+Cz2 M−1
+(`)
+(`) 0
+E
+h
+[
+m
+]
+h
+[
+m
+]
+∑0
+4 m,m
+=0
+Cz2
+4
+
+M ( M +1)−1
+
+∑
+
+r,r 0 =0
+
+(`)
+
+(`)
+
+∂ fm
+∂g[r ]
+
+∂ f m0
+∂g[r 0 ]
+
+g =0
+
+E{g[r ]g[r 0 ]} + o
+
+g =0
+ 
+2
+
+
+2
+2
+2
+Cz M ( M + 1) d1,z,M,` 1
+1
+2 2
+4
+≤
+Cz σ + 2σ + o
+4
+4
+K
+K
+σ
+
+≤
+
+Cz2 M2 ( M + 1)2 d21,z,M,`
+4K
+
+Fourth,
+
+|η4 [n]| ≤ σCz A0`
+
+
+
+
+ 
+Cz2
+1
++
+2
++
+o
+.
+K
+σ2
+
+M −1
+max
+
+ 
+1
+K
+
+∑0
+
+m,m =0
+
+(71)
+
+E{h(`) [m]wK [m0 ]}
+
+But,
+E{h(`) [m]wK [m0 ]} ≤
+
+M( M +1)−1
+
+∑
+
+r =0
+
+(`)
+
+∂ fm
+∂g[r ]
+
+g =0
+
+E{g[r ]wK [m0 ]} + o
+
+d
+σ
+`
+≤ M( M + 1) 1,z,M,
+Cz + o
+K
+σ2
+Thus,
+
+ 
+1
+K
+
+ 
+1
+K
+(72)
+
+`
+ 
+
+
+1
+1
+2J
++o
+.
+|η4 [n]| ≤ M` ( M + 1)Cz2 d1,z,M,` max 1,
+M
+K
+K
+
+Fifth and sixth, second-order Taylor expansions of h(`) give
+ 
+1
+η5 [ n ] = o
+,
+K
+ 
+1
+η6 [ n ] = o
+.
+K
+
+(73)
+
+(74)
+(75)
+
+Seventh,
+
+|η7 [n]| ≤ 2σ2 A0`
+≤ 2σ
+
+2
+
+A0`
+
+M −1
+max
+
+∑0
+
+m,m =0
+
+E{h(`) [m]wK [m]wK [m0 ]}
+
+M −1 M ( M +1)−1
+max
+
+∑
+
+m,m0 =0
+
+∑
+
+r =0
+
+(`)
+
+∂ fm
+∂g[r ]
+
+g =0
+
+E{ g
+
+(`)
+
+ 
+1
+[r ]wK [m]wK [m ]} + o
+.
+K
+0
+
+But,
+(`)
+
+(`)
+
+E{g(`) [r ]wK [m]wK [m0 ]} = σE{g1 [r ]wK [m]wK [m0 ]} + σ2 E{g2 [r ]wK [m]wK [m0 ]} .
+(`)
+
+As before, since E{g1 [r ]wK [m]wK [m0 ]} is a third-order moment of a multivariate zero-mean Gaussian vector, it
+vanishes. And,
+(`)
+
+E{g2 [r ]wK [m]wK [m0 ]} =
+
+=
+≤
+
+
+1 K −1 
+E wk [mr + ar ]wk [mr0 ]wK [m]wK [m0 ] − δmr + ar ,mr0 E wK [m]wK [m0 ]
+K k∑
+=0
+1 K −1
+δk+mr + ar ,K +m δk+mr0 ,K +m0 + δk+mr + ar ,K +m0 δk+mr0 ,K +m
+K k∑
+=0
+2
+.
+K
+
+13
+
+Thus,
+
+ 
+d1,z,M,` 2σ2
+1
++
+o
+K
+K
+max
+σ2
+` 2
+
+
+ 
+σ
+2J
+1
+`+2
+.
+≤ 4M ( M + 1)d1,z,M,` max 1,
++o
+M
+K
+K
+M 3 ( M + 1)
+
+|η7 [n]| ≤ 2σ2 A0`
+
+(76)
+
+To conclude, we combine the expressions (69), (70), (71), (73), (74), (75), and (76) to determine an upper bound
+on the variance γ[n, n]. It follows:
+!
+ 
+(n)
+1 c1
+1
+(n) 2
+(n)
+(n) 2
+γ[n, n] ≤ c0 σ +
++
+c
++
+c
+σ
++
+o
+,
+2
+3
+K
+K
+σ2
+where
+(n)
+c0 = M` max
+
+1,
+
+
+
+2J
+M
+
+ 2` !
+
+1
+= Cz4 M2 ( M + 1)2 d21,z,M,`
+4
+
+
+`
+2J
+1 2 2
+(n)
+2 2
+`
+2
+c2 = Cz M ( M + 1) d1,z,M,` + M ( M + 1)Cz d1,z,M,` max 1,
+2
+M
+`
+
+
+2J
+(n)
+.
+c3 = 4M`+2 ( M + 1)d1,z,M,` max 1,
+M
+(n)
+
+c1
+
+a) If n0 ≥ N: When n ≥ N and n0 ≥ N, applying the Cauchy-Schwarz inequality, we obtain the following
+bound on the covariance γ[n, n]:
+q
+γ[n, n0 ] ≤ γ[n, n]γ[n0 , n0 ]
+v
+!
+!!
+u
+ 
+q
+(n)
+(n0 )
+u
+c1
+c1
+1
+1
+1
+1
+(n) (n0 ) 2 t
+(n) 2
+(n0 ) 2
+(n)
+(n0 )
++o
+≤ c0 c0 σ 1 +
++ c2 + c3 σ + ( n 0 )
++ c2 + c3 σ
+.
+2
+2
+2
+(
+n
+)
+K
+Kσ
+σ
+σ
+c
+c
+0
+
+0
+
+A first-order Taylor expansion of this bound as K → ∞ gives
+v
+! v
+u (n0 )
+u (n)
+q
+(n)
+u
+uc
+0
+c1
+1  t c0
+(n) (n )
+(n) 2
+(n)
+t 0
+σ
++
+≤ c0 c0 σ 2 +
++
+c
++
+c
+3
+2
+2
+(n)
+(n0 )
+2K
+σ
+c0
+c0
+!
+ 
+(n,n0 )
+1 c1
+1
+(n,n0 ) 2
+(n,n0 )
+(n,n0 ) 2
+σ +
+≤ c0
++ c2
++ c3
+σ +o
+,
+K
+K
+σ2
+where
+(n,n0 )
+
+q
+
+(n) (n0 )
+
+c0 c0 ,
+v
+v
+
+u (n0 )
+u (n) 
+u
+u
+1  ( n ) t c0
+( n 0 ) t c0 
+(n,n0 )
+cp
+=
+cp
++
+c
+,
+p
+(n)
+(n0 )
+2
+c0
+c0
+c0
+
+=
+
+(n0 )
+c1
+(n0 )
+(n0 )
++ c2 + c3 σ 2
+2
+σ
+
+∀ p ∈ {1, 2, 3} .
+
+b) If n0 ∈ I: When n ≥ N and n0 ∈ I, equation (17) shows us that:
+(`)
+
+γ[n, n0 ] = σE{w[n0 ]h(`) }zK + σ2 E{w[n0 ]α0 wK } + σ2 E{w[n0 ]h(`) wK }
+∆
+
+= β 1 [n, n0 ] + β 2 [n, n0 ] + β 3 [n, n0 ] ,
+
+where
+β 1 [n, n0 ] = σE{w[n0 ]h(`) }zK ,
+(`)
+
+β 2 [n, n0 ] = σ2 E{w[n0 ]α0 wK } ,
+
+β 3 [n, n0 ] = σ2 E{w[n0 ]h(`) wK } .
+
+!
+ 
++o 1
+K
+
+14
+
+Besides, thanks to the bound (72) we have:
+β 1 [n, n0 ] ≤ σ
+
+Cz M−1
+E{w[n0 ]h(`) [m]}
+2 m∑
+=0
+
+ 
+d1,z,M,` σ
+Cz 2
+1
+C
+M ( M + 1)
++
+o
+z
+2
+K
+K
+σ2
+ 
+C2 d
+1
+1
+≤ M2 ( M + 1) z 1,z,M,` + o
+.
+2
+K
+K
+
+≤σ
+
+Besides,
+
+β 2 [n, n0 ] ≤ σ2 A0`
+
+≤ σ2 A0`
+2
+
+≤σ M
+
+`−1
+
+Besides, identically to the bound (76) on η7 , we obtain
+
+(77)
+
+M −1
+
+∑ E{w[n0 ]wK [m]}
+
+max m=0
+max
+
+
+
+
+
+2J
+max 1,
+M
+
+`
+
+.
+
+(78)
+
+M −1
+
+β 3 [n, n0 ] ≤ σ2 ∑ E{w[n0 ]h(`) [m]wK [m]}
+m =0
+
+ 
+d1,z,M,` 4σ2
+1
++o
+≤ σ M ( M + 1)
+2
+K
+K
+σ
+ 
+2
+1
+4σ
++o
+.
+≤ M3 ( M + 1)d1,z,M,`
+K
+K
+2
+
+3
+
+(79)
+
+Finally, we combine expressions (77), (78), and (79) to determine an upper bound on the variance γ[n, n0 ]. It follows:
+ 
+
+1  (n,n0 )
+1
+(n,n0 ) 2
+(n)
+γ[n, n0 ] ≤ b0
+σ +
+b1
++ b2 σ2 + o
+,
+K
+K
+where
+
+
+
+
+
+`
+2J
+max 1,
+M
+2d
+0
+C
+(n,n )
+b1
+= M2 ( M + 1) z 1,z,M,`
+2
+(n,n0 )
+= 4M3 ( M + 1)d1,z,M,` .
+b2
+(n,n0 )
+= M`−1
+b0
+
+II. A PPLICATION TO AN E LECTROCARDIOGRAM
+We provide here an additional implementation of BoundEffRed, applied to an electrocardiogram (ECG) dataset.
+The dataset is constructed from a 500-second-long ECG, sampled at f s = 200 Hz, cut into 10 segments of 50 seconds
+each. Fig. 10 depicts the right boundary of one of these subsignals, together with the 6-second extensions estimated
+by SigExt (first panel), or EDMD (second panel), GPR (third panel), or TBATS (fourth panel). These extensions are
+superimposed to the ground-truth extension, plotted in red. The sharp and spiky ECG patterns make the AHM
+model too simplistic to describe this type of signal. Consequently, the forecast produced by SigExt is moderately
+satisfactory. Note that TBATS is the only one that seems to accurately capture the locations of QRS complexes after
+37 seconds. We will explore this long-term prediction capability in the future work.
+Table IV contains the median performance index D of the boundary-free TF representations, over the N subsignals
+evaluated, according to the extension method. As a result of the fair quality of the forecasts, the reduction of
+boundary effects is less significant than for PPG signal. Nevertheles, the results show that BoundEffRed has the
+same efficiency when the SigExt extension, the EDMD extension or the GPR extension is chosen. Indeed, t-tests
+performed under the null hypothesis that the mean are equals, with a 5% significance level, show no statistical
+significant difference between SigExt and EDMD or GPR, regardless of the representation considered. This justifies
+the choice of SigExt for real-time implementation.
+
+15
+
+Fig. 10. Extended ECG (blue) obtained by the SigExt forecasting (first panel), the EDMD forecasting (second panel), the GPR forecasting (third
+panel), and the TBATS forecasting (fourth panel), superimposed with the ground truth signal (dashed red).
+TABLE IV
+ECG: P ERFORMANCE OF THE B OUNDARY-F REE TF R EPRESENTATIONS A CCORDING TO THE E XTENSION M ETHOD
+Extension
+method
+SigExt
+Symmetric
+EDMD
+GPR
+
+Median performance index D
+STFT
+SST
+ConceFT
+RS
+0.584
+0.630
+0.462
+0.642
+1.199
+1.354
+1.427
+0.943
+0.538
+0.558
+0.496
+0.714
+0.639
+0.588
+0.485
+0.616
+
+III. A PPLICATION TO A M ULTICOMPONENT C ARDIAC S IGNAL
+We consider a cardiac signal, namely a photoplethysmogram (PPG) recording, sampled at 300 Hz. In addition to
+the cardiac cycle measurement, this signal contains a slow varying component, which is the respiratory component,
+known as respiration induced intensity variation (RIIV) [2]. The top of Fig. 11 displays an excerpt of the signal along
+with a 3-second-long extension obtained by the SigExt forecasting. The lower part of Fig. 11 shows the respiratory
+signal recording the concentration of CO2 . This signal was recorded simultaneously with the PPG signal, and
+visually highlights the low-frequency respiratory component contained in the PPG signal. Indeed, the intervals
+where the concentration of CO2 drops—highlighted by the bluish areas—coincide with the decreases in the PPG
+signal. Note also that the forecasting breaks the waveform of the oscillations because of its inability to forecast
+the high-frequency harmonics contained in the signal. Nevertheless, as long as the low-frequency harmonics of the
+components contained in the signal are preserved, the forecasting is sufficient to reduce boundary effects in the
+low-frequency TF domain.
+The ordinary and boundary-free SSTs of this signal are displayed in Fig. 12. These TF analyses brings out both
+components—the fundamental frequency of the cardiac component, the most energetic one, indicated by the blue
+arrows, is located around 1.3 Hz, while the respiratory component, less visible, indicated by the green arrows, is
+located around 0.2 Hz and its multiples. Clearly, near the boundaries, BoundEffRed helps improve the quality of
+the TF representation. Besides, the performance index of this representation takes the value D = 0.491. This means
+that BoundEffRed has reduced the right-side boundary effects by about 51% with respect to the ordinary SST. This
+shows the ability of our algorithm to work on signals containing several nonstationary components.
+R EFERENCES
+[1] L. Isserlis, “On a formula for the product-moment coefficient of any order of a normal frequency distribution in any number of variables,”
+Biometrika, vol. 12, no. 1-2, pp. 134–139, 11 1918. [Online]. Available: https://doi.org/10.1093/biomet/12.1-2.134
+[2] L. M. Nilsson, “Respiration signals from photoplethysmography,” Anesthesia and Analgesia, vol. 117, no. 4, pp. 859–865, 2013.
+
+16
+
+Fig. 11. PPG signal (top, yellow), and the associated SigExt extension (blue). The simultaneously recorded concentration of CO2 is below. The
+bluish areas show the synchrony between the drops in CO2 concentration and the decreases in the PPG signal.
+
+1
+
+1
+
+Frequency (Hz)
+
+1.5
+
+Frequency (Hz)
+
+1.5
+
+0.5
+
+0
+
+0.5
+
+0
+
+10
+
+20
+
+Time (s)
+
+30
+
+40
+
+50
+
+0
+
+0
+
+10
+
+20
+
+30
+
+40
+
+50
+
+Time (s)
+
+Fig. 12. Ordinary SST (left) and boundary-free SST (right) of the PPG signal. The window length for the SSTs is 18 seconds. The green arrows
+indicate the instantaneous frequency of the respiratory component. The blue arrows, on the other hand, indicate the instantaneous frequency
+of the blood pressure component. The red dashed boxes highlight the areas where boundary effects may appear.
+
+
