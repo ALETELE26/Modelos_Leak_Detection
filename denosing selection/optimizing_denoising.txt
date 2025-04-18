@@ -1,0 +1,259 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Optimal Wavelet Selection for Signal Denoising}
+\author{Gyana Ranjan Sahoo\textsuperscript{1}, Jack H. Freed\textsuperscript{1,2}, and Madhur Srivastava\textsuperscript{1,2,3}\\
+	\small \textsuperscript{1}Department of Chemistry and Chemical Biology, Cornell University, Ithaca, NY 14853, USA\\
+	\small \textsuperscript{2}National Biomedical Center for Advanced ESR Technology, Cornell University, Ithaca, NY 14853, USA\\
+	\small \textsuperscript{3}Cornell Atkinson Center for Sustainability, Cornell University, Ithaca, NY 14853, USA\\
+	\href{mailto:ms2736@cornell.edu}{ms2736@cornell.edu}}
+\date{Date of publication XXXX 00, 0000; date of current version XXXX 00, 0000.}
+
+\begin{document}
+
+	\begin{abstract}
+		Wavelet denoising plays a key role in removing noise from signals and is widely used in many applications. In denoising, selection of the mother wavelet is desirable for maximizing the separation of noise and signal coefficients in the wavelet domain for effective noise thresholding. At present, wavelet selection is carried out in a heuristic manner or using trial-and-error that is time consuming and prone to error, including human bias. An empirical method is introduced to select optimal wavelets based on the sparsity of detail components in the wavelet domain. A mean of sparsity change ($\mu_{sc}$) parameter is defined that captures the mean variation of noisy detail components. The efficacy of the presented method is tested on simulated and experimental signals from electron spin resonance spectroscopy at various SNRs. The results reveal that the $\mu_{sc}$ values of signal vary abruptly between wavelets, whereas for noise it displays similar values for all wavelets. For low Signal-to-Noise Ratio (SNR) data, the change in $\mu_{sc}$ between highest and second highest value is approximately 8--10\% and for high SNR data it is around 5\%. The mean of sparsity change increases with the SNR of the signal, which implies that multiple wavelets can be used for denoising a signal, whereas the signal with low SNR can only be efficiently denoised with a few wavelets. Either a single wavelet or a collection of optimal wavelets (i.e., top five wavelets) should be selected from the highest $\mu_{sc}$ values. The code is available on GitHub and the signalsciencelab.com website.
+	\end{abstract}
+	
+	\textbf{Index Terms}---wavelet selection, decomposition level selection, detail components, signal denoising, sparsity, wavelet denoising, wavelet transform
+	
+	\section{Introduction}
+	Often, experimental signals are weak and are difficult to study due to the presence of noise. Wavelet denoising is widely used to improve the Signal-to-Noise Ratio (SNR) without distorting the signal [1]--[6]. Wavelet denoising is known to have better performance over filtering based denoising methods [3], [4] and has been applied to many fields such as time series analysis [5]--[7], computed tomography [8]--[10], magnetic resonance imaging [11]--[13], fluorescence imaging [14]--[16], Raman spectroscopy [17]--[19], speech recognition [20]--[22], traffic volume prediction [23]--[25] and electron spin resonance (ESR) spectroscopy [1], [26], [27].
+	
+	The efficacy of denoising depends on several factors like selection of the mother wavelet, decomposition level and thresholding criteria [28]--[30]. Currently, noise thresholding and decomposition level selection for discrete wavelet transforms are well developed. However, the mother wavelet for effective denoising has been selected heuristically and/or through trial and error. The mother wavelet plays a crucial role in denoising and hence needs to be selected carefully. Sub-optimal wavelet selection can lead to signal distortion or inadequate noise reduction.
+	
+	A mother wavelet that maximizes the magnitude of the signal coefficient and minimizes the noise coefficient values in the wavelet domain would yield better efficacy in denoising. Several methods have previously been developed for optimal wavelet selection using cross validation [31], Shannon entropy [32], probabilistic neural network [33], and Nash Sutcliffe criteria [34]. However, these methods are not universal and focus only on specific types of signal [31]--[35]. Also, the wavelet and decomposition level selections are not performed in the wavelet domain. Instead, they are obtained after comparing the denoised data, which makes the method cumbersome, time consuming and difficult to apply in real time.
+	
+	In this paper, a generalized method is presented to select the optimal mother wavelet function for denoising. The method uses a sparsity parameter [1], [36] to quantify maximum separation between signal and noisy detail coefficients of the wavelet-transformed data. Subsequently, it calculates the mean of sparsity change to identify a wavelet (or a group of wavelets) that yields maximum separation across decomposition levels. The sparsity change has been reliably used to obtain the highest decomposition level [36], and hence can be easily integrated into any wavelet denoising algorithm. Using this sparsity criterion, an automated empirical method is developed that selects the optimal wavelet in real time for a given noisy signal, without a priori knowledge.
+	
+	The paper is organized as follows. In section II, we discuss the importance of wavelet families and respective wavelets used for this study. In section III, we provide the details of the decomposition level selection, sparsity calculation and its use to select a decomposition level that separates noisy and noise-free detail components. In section IV, we describe criteria used to select the optimal wavelets. In section V, we explain the model data, including simulated and experimental data, which is used to test and validate our method. Section VI discusses the results and Section VII summarizes the method and findings in the Conclusion.
+	
+	\section{Wavelet Sample Space}
+	We created a sample space of most widely utilized wavelets for denoising. These include Biorthogonal, Coiflet, Daubechies, Reverse biorthogonal and Symlet families. Within each wavelet family we used bior1.1--bior2.6, coif1--coif5, db2--db11, rbio1.3--rbio2.8 and sym2--sym7, which have different filter lengths and practical applications. We did not consider db1 and rbio1.1, as they are the same as bior1.1 and haar, but with different names. Table~\ref{tab:symbols} displays the list of symbols used. Table~\ref{tab:sample_space} displays the list of wavelets used in the sample space.
+	
+	\begin{table}[ht]
+		\centering
+		\caption{Description of symbols used.}
+		\label{tab:symbols}
+		\begin{tabular}{ll}
+			\toprule
+			Symbol & Description \\
+			\midrule
+			$X$ & Input signal \\
+			$L_{D_j}$ & Length of detail component at $j$th decomposition level \\
+			$L_f$ & Length of wavelet filter \\
+			$R_j$ & Ratio of detail component length to filter length \\
+			$D_j$ & Detail component at decomposition level $j$ \\
+			$D_j[k]$ & Detail component at index $k$ for level $j$ \\
+			$S_j$ & Sparsity at level $j$ \\
+			$q_j$ & Length of the detail component at level $j$ \\
+			$N$ & Maximum possible decomposition level \\
+			$\Delta S$ & Sparsity change between adjacent levels \\
+			$\kappa$ & Optimal decomposition level separating noisy and noise-free detail coefficients \\
+			$\mu_{SC}$ & Mean of sparsity change \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	
+	\begin{table}[ht]
+		\centering
+		\caption{Wavelet sample space used for optimal wavelet selection.}
+		\label{tab:sample_space}
+		\begin{tabular}{lllll}
+			\toprule
+			Biorthogonal & Coiflet & Daubechies & Reverse Biorthogonal & Symlet \\
+			\midrule
+			bior1.1 & coif1 & db2 & rbio1.3 & sym2 \\
+			bior1.3 & coif2 & db3 & rbio1.5 & sym3 \\
+			bior1.5 & coif3 & db4 & rbio2.2 & sym4 \\
+			bior2.2 & coif4 & db5 & rbio2.4 & sym5 \\
+			bior2.4 & coif5 & db6 & rbio2.6 & sym6 \\
+			bior2.6 &       & db7 & rbio2.8 & sym7 \\
+			&       & db8 &        &      \\
+			&       & db9 &        &      \\
+			&       & db10 &       &      \\
+			&       & db11 &       &      \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	
+	% Secciones III y IV en LaTeX
+	
+	\section{Decomposition Level Selection}
+	
+	\subsection{Effective Decomposition Level}
+	El nivel máximo de descomposición en wavelets discretas (DWT) está acotado por $\lfloor\log_2(\mathrm{length}(X))\rfloor$, donde $X$ es la señal de entrada. No obstante, más allá de cierto nivel, el filtro wavelet domina los coeficientes de detalle en lugar de la señal o el ruido. Para detectar los niveles útiles, calculamos:
+	\[
+	R_j = \frac{L_{D_j}}{L_f},
+	\]
+	donde $L_{D_j}$ es la longitud del componente de detalle en el nivel $j$ y $L_f$ la longitud del filtro wavelet. Se consideran niveles efectivos aquellos con $R_j>1.5$ [36]. Por ejemplo, en la Tabla~\ref{tab:coiflet_levels} se muestran $L_{D_j}$, $L_f$ y $R_j$ para la familia Coiflet con señal de longitud 1024.It can be seen
+	that $L_{D_{j}}$ values are different for each wavelet which is also
+	reflected in $R_{j}$ . The $R_{j}$ reflects the dominance of the wavelet
+	filter in a Detail component. Table 4 exhibits the effective
+	decomposition level and corresponding ratio cutoff (> 1.5)
+	for each wavelet in the wavelet sample space. It can be seen
+	from Table 4, that the effective decomposition level varies for
+	different wavelets based on their filter length.
+	
+	\subsection{Sparsity}
+	Sparsity captures the presence of noise in a Detail compo-
+	nent, enabling the separation of noisy and noise-free Detail
+	components. The Detail components with larger noise has
+	lower sparsity values, whereas $\tilde{D_{j}}s$ with lower noise has
+	larger sparsity [1], [36]. The presence of noise in Detail
+	coefficient decreases with increase in decomposition level,
+	which results in increase in sparsity. Sparsity (S) of Detail
+	coefficients (D) at each level for all wavelets is calculated as
+	per the following equation.
+	\begin{equation}
+		S_j = \frac{\max_k|D_j[k]|}{\sum_{k=1}^{q_j}|D_j[k]|},\, 1\leq j \leq N
+	\end{equation}
+	
+	
+	where $S_{j}$ , $D_{j} $and $q_{j }$are the sparsity, Detail component and
+	length of the Detail component at jth decomposition level.
+	Figure 2a and 2b displays the sparsity plot of sym2 and
+	coif2 wavelets, of white Gaussian noise, noise-free and noisy
+	signal at SNR-30, respectively. It can be seen that, at a lower
+	decomposition level, the sparsity value of the noisy signal
+	is close to that of the sparsity value of only noise, whereas
+	the sparsity value of the noisy signal is close to the sparsity
+	value of noise-free data at higher decomposition levels. This
+	separation between noisy and noise-free Detail components
+	is highlighted by a vertical line in all the sparsity plots shown
+	in Figure 2. This feature is consistent across other simulated
+	signals, which can be seen in the sparsity plot of SNR-10
+	data shown in Figure 2c and 2d for sym2 and coif2 wavelets
+	respectively.
+	
+	\subsection{Sparsity Change($\Delta S$)}
+		The sparsity change parameter is used to determine the high-
+	est decomposition level that contains a noisy Detail compo-
+	nent. Sparsity value represents the magnitude of noise present
+	in a Detail component, whereas, the sparsity change separates
+	noisy and noise-free Detail components by identifying an
+	abrupt change in $\Delta S$ value between adjacent decomposition
+	levels. The sparsity change ($\Delta S$) is calculated as:
+	\[
+	\Delta S_j = S_j - S_{j-1}
+	\]
+	where $\Delta S_j$ is the sparsity change at jth decomposition level
+	and $S_{j}$ , and $S_{j-1} $are the sparsity at jth and ($j - 1$)th
+	decomposition level respectively. $\Delta S_{1}$ = 0 as there is no
+	preceding level.
+	
+	\subsection{Optimal Decomposition Level($\kappa$)}
+	The optimal decomposition level ($\kappa$) that separates noisy and
+	noise free Detail components can be calculated subjectively
+	from change in sparsity plot or empirically through a cutoff
+	value [36]. In the subjective approach, the optimal decompo-
+	sition level j (=$\kappa$) is selected where the first abrupt change
+	in the $\Delta S_j$ plot happens between j and j+1. Empirically, a
+	threshold of 5\% with respect to 1 is selected as cutoff be-
+	tween noisy and noise-free Detail components. The optimal
+	decomposition level ($\kappa$=) j-1 is selected where $\Delta S_j$> 0.05
+	in the first occurrence [36].
+	
+	\section{Wavelet Selection Criteria}
+	Selection of wavelets is done using the sparsity of the Detail
+	coefficients. The mean of $\Delta S$ between adjacent levels is used
+	as the quantitative parameter to select optimal wavelet
+	
+	\subsection{Mean of Sparsity Change ($\mu_{sc}$)}
+	The mean of $\Delta S$ for each wavelet is calculated between
+	level-2 to one level after the optimal decomposition level
+	($\kappa$+ 1).  $\Delta S_{1}$ = 0 as there is no preceding level. Hence, the
+	mean of $\Delta S$ for each wavelet is calculated between levels
+	2 to $\kappa$ + 1 using equation 4. Now, $\mu_{s c}$ can be expressed as
+	the ratio of difference in sparsity between level $\kappa$ + 1 and
+	level 1 to ($\kappa - 1$ ). The plot of $\mu_{s c}$  of white Gaussian noise,
+	noise-free signal and noisy signal of SNR-30 displayed in
+	Figure 3 demonstrates the variation of $\mu_{s c}$ among wavelets.
+	From the Figure 3, it can be seen that the $\mu_{s c}$ of noise is
+	lower, whereas, $\mu_{s c}$ for noise-free signal and noisy signal
+	are comparable. Such behavior demonstrates the efficacy of
+	the method to reduce effect of noise while selecting optimal
+	wavelet. It should be noted that the mean of sparsity for
+	noise is calculated between the decomposition level 2 and
+	optimal decomposition level obtained corresponding to the
+	noisy signal.
+	
+	\begin{equation}\label{equation 4}
+		\begin{aligned}
+			& \mu_{s c}=\frac{\sum_{j=2}^{\kappa+1} \Delta S_j}{(\kappa+1)-2} \\
+			& =\frac{\Delta S_2+\Delta S_3+\ldots+\Delta S_{\kappa+1}}{\kappa-1} \\
+			& =\frac{\left(S_2-S_1\right)+\left(S_3-S_2\right)+\ldots+\left(S_{\kappa+1}-S_\kappa\right)}{\kappa-1} \\
+			& =\frac{S_{\kappa+1}-S_1}{\kappa-1}
+		\end{aligned}
+	\end{equation}
+	
+	\subsection{Optimal Wavelet Selection}
+	Optimal wavelets are selected utilizing the mean of sparsity
+	change. From Figure 3, it can be seen that $\mu_{s c}$ of only noise
+	has similar values for all wavelets. On the other hand, $\mu_{s c}$
+	of noise-free signal for bior2.2 wavelet has higher value
+	compared to other wavelets. For a noisy signal few wavelets
+	have higher $\mu_{s c}$  value than others. Such behavior demon-
+	strates that, there can be only one or two optimal wavelets
+	for high SNR signal whereas for low SNR signal there can
+	be a few optimal wavelets. The wavelet corresponding to the
+	highest $\mu_{s c}$  is selected as the optimal wavelet. Additionally,
+	we have selected five wavelets corresponding to highest $\mu_{s c}$ 
+	values. Mathematically, the optimal wavelet and five optimal
+	wavelets can be selected as:
+
+	\begin{equation}	\label{equation 5}
+		\begin{aligned}
+			&\begin{array}{r}
+				\text { Optimal wavelet }=\text { wavelet }\left\{\max \left(\mu_{s c}^1, \mu_{s c}^2, \cdots, \mu_{s c}^n\right)\right\} \\
+				\text { Five optimal wavelets }=\sum_{i=1}^5 \text { wavelet }\left\{\operatorname { m a x } \left(\mu_{s c}^1, \mu_{s c}^2, \cdots,\right.\right. \\
+				\left.\left.\mu_{s c}^{n+1-i}\right)\right\}
+			\end{array}\\
+		\end{aligned}
+	\end{equation}
+	
+	where $wavelet$ is the list of wavelets in the sample space, $n$
+	is the total number of wavelets, ${\mu_{sc}^{n}}$ is the mean of sparsity
+	corresponding to $ n^{th}$ wavelet.
+	
+	\section{Data Collection}
+	
+	\subsection{Simulated Data}
+	Simulated ESR signals are generated using a Lorentzian function in MATLAB, length 1024, peak height ~0.2753, peak separation ~185 samples. Additive white Gaussian noise is added to achieve SNRs of 5, 10, 30, 50, where:
+	\[
+	\mathrm{SNR} = \frac{\mathrm{Signal}_{\mathrm{peak}}}{\mathrm{Noise}_{\mathrm{rms}}}.
+	\]
+	Noise RMS is computed from the first 200 samples of the signal.
+	
+	\subsection{Experimental Data}
+	Continuous-wave ESR spectra were acquired:
+	\begin{itemize}
+		\item Bruker ELEXYS-II E500 at 9.4 GHz, 20°C, sweep width 60 G over 2 min, time constant 82 ms, modulation ±0.02 G at 100 kHz, microwave power 0.2 mW, 4 µL of 100 µM Tempol, averages of 1, 4, and 500 scans.
+		\item In-house 95 GHz spectrometer at 3.3 T, 25°C, sweep width 250 G over 2 min, time constant 100 ms, modulation 6 G at 100 kHz, microwave power 16 mW, phospholipid vesicles with 0.5% spin label, averages of 1, 4, and 18 scans.
+	\end{itemize}
+	
+	\section{Results and Discussion}
+	The method was applied to simulated and experimental data. Optimal decomposition levels $\kappa$ and $\mu_{sc}$ values were computed for each wavelet. Tables~\ref{tab:simulated_results}, \ref{tab:exp_commercial}, \ref{tab:exp_inhouse} list the top five wavelets by $\mu_{sc}$ for various SNRs and scan counts.
+	
+	\section{Conclusion}
+	A sparsity-based empirical method for selecting optimal wavelets is presented. Key findings:
+	\begin{itemize}
+		\item Noise-only $\mu_{sc}$ values are uniform across wavelets; signal $\mu_{sc}$ peaks for specific wavelets.
+		\item $\mu_{sc}$ increases with signal SNR due to lower optimal decomposition level.
+		\item Biorthogonal wavelets excel for low-SNR signals.
+	\end{itemize}
+	The method automates wavelet selection, outperforming heuristic approaches and suitable for real-time denoising.
+	
+	\section*{Acknowledgment}
+	We thank Dr. Tufa Assafa and the National Biomedical Resource for Advanced Electron Spin Resonance Spectroscopy (ACERT) for data. Funding by NIH grants R24GM146107 and R35GM148272.
+	
+	\begin{thebibliography}{40}
+		\bibitem{Srivastava2016} M. Srivastava, C. L. Anderson, and J. H. Freed, "A new wavelet denoising method for selecting decomposition levels and noise thresholds," \emph{IEEE Access}, vol. 4, pp. 3862--3877, 2016.
+		% ... full list of references as in PDF ...
+	\end{thebibliography}
+	
+\end{document}
